@@ -7,5 +7,7 @@ on:
 jobs:
   build:
     uses: ./.github/workflows/build.yml
+    permissions:
+      contents: read
     with:
       push-to-registry: false

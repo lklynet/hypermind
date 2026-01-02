@@ -16,9 +16,6 @@ env:
 jobs:
   build:
     runs-on: ${{ matrix.runner }}
-    permissions:
-      contents: read
-      packages: write
     strategy:
       fail-fast: false
       matrix:

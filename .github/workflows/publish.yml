@@ -14,6 +14,10 @@ env:
 jobs:
   build:
     uses: ./.github/workflows/build.yml
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit
     with:
       push-to-registry: true
 
