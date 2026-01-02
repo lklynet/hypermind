@@ -7,10 +7,12 @@ const path = require("path");
 
 const app = express();
 
-// Location state persistence
+// Location opt-in via environment variable or file persistence
+// Environment variable takes precedence (useful for Docker/k8s deployments)
 const OPTIN_FILE = path.join(__dirname, ".location-optin");
+const envOptIn = process.env.LOCATION_OPTIN === "true";
 let myLocation = null;
-let locationOptIn = fs.existsSync(OPTIN_FILE);
+let locationOptIn = envOptIn || fs.existsSync(OPTIN_FILE);
 
 async function initLocation() {
   try {
@@ -628,12 +630,12 @@ app.get("/", (req, res) => {
                 <div id="count" class="count">${count}</div>
                 <div class="label">Active Nodes</div>
                 <div class="map-container" id="mapContainer">
-                    <div id="map"></div>
-                    <div class="optin-overlay" id="optinOverlay">
+                    <div id="map" class="${locationOptIn ? 'opted-in' : ''}"></div>
+                    <div class="optin-overlay${locationOptIn ? ' hidden' : ''}" id="optinOverlay">
                         <button class="optin-btn" onclick="optIn()">Enable Map</button>
                     </div>
                     <div class="map-controls">
-                        <button class="map-btn" id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
+                        <button class="map-btn${locationOptIn ? ' visible' : ''}" id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
                     </div>
                 </div>
                 <div class="footer">
@@ -743,7 +745,7 @@ app.get("/", (req, res) => {
                     interactive: true
                 });
 
-                let locationOptedIn = false;
+                let locationOptedIn = ${locationOptIn};
 
                 map.on('load', () => {
                     map.addSource('peers', {

@@ -6,3 +6,4 @@ services:
     restart: unless-stopped
     environment:
       - PORT=3000
+      # - LOCATION_OPTIN=true  # Enable peer location map without UI opt-in

@@ -48,6 +48,7 @@ docker run -d \
   --network host \
   --restart unless-stopped \
   -e PORT=3000 \
+  # -e LOCATION_OPTIN=true \
   ghcr.io/lklynet/hypermind:latest
 
 ```
@@ -56,6 +57,8 @@ docker run -d \
 > Use `--network host`. This is a P2P application that needs to punch through NATs. If you bridge it, the DHT usually fails, and you will be the loneliest node in the multiverse.
 >
 > If you need to change the port (default 3000), update the `PORT` environment variable. Since `--network host` is used, this port will be opened directly on the host.
+>
+> Set `LOCATION_OPTIN=true` to enable the peer location map without requiring UI opt-in. Useful for headless deployments.
 
 ### Docker Compose (The Classy Way)
 
@@ -70,6 +73,7 @@ services:
     restart: unless-stopped
     environment:
       - PORT=3000
+      - LOCATION_OPTIN=true  # Enable peer location map without UI opt-in
 
 ```
 
