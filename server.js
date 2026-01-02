@@ -180,6 +180,7 @@ console.log(
 );
 
 let mySeq = 0;
+let maxNodesSeen = 0;
 
 const seenPeers = new Map();
 
@@ -195,8 +196,12 @@ function broadcastUpdate() {
   if (now - lastBroadcast < 1000) return;
   lastBroadcast = now;
 
+  const currentCount = peerCounter.count(); // Use HyperLogLog for total peer count
+  maxNodesSeen = Math.max(currentCount, maxNodesSeen);
+
   const data = JSON.stringify({
-    count: peerCounter.count(), // Use HyperLogLog for total peer count
+    count: currentCount,
+    max: maxNodesSeen,
     direct: swarm.connections.size,
     id: MY_ID,
   });
@@ -486,12 +491,14 @@ app.get("/", (req, res) => {
                 </div>
                 <div class="debug">
                     ID: ${MY_ID.slice(0, 8)}...<br>
-                    Direct Connections: <span id="direct">${directPeers}</span>
+                    Direct Connections: <span id="direct">${directPeers}</span><br>
+                    Max Nodes Seen: <span id="max">${maxNodesSeen}</span>
                 </div>
             </div>
             <script>
                 const countEl = document.getElementById('count');
                 const directEl = document.getElementById('direct');
+                const maxEl = document.getElementById('max');
                 
                 // Particle System
                 const canvas = document.getElementById('network');
@@ -583,19 +590,20 @@ app.get("/", (req, res) => {
                 const evtSource = new EventSource("/events");
                 
                 evtSource.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
+                    const { count, direct, max } = JSON.parse(event.data);
                     
-                    updateParticles(data.count);
+                    updateParticles(count);
 
                     // Only update and animate if changed
-                    if (countEl.innerText != data.count) {
-                        countEl.innerText = data.count;
+                    if (countEl.innerText != count) {
+                        countEl.innerText = count;
                         countEl.classList.remove('pulse');
                         void countEl.offsetWidth; // trigger reflow
                         countEl.classList.add('pulse');
                     }
                     
-                    directEl.innerText = data.direct;
+                    directEl.innerText = direct;
+                    maxEl.innerText = max;
                 };
                 
                 evtSource.onerror = (err) => {
