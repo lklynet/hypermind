@@ -1,8 +1,38 @@
 const express = require("express");
 const Hyperswarm = require("hyperswarm");
 const crypto = require("crypto");
+const iploc = require("ip-location-api");
 
 const app = express();
+
+// Location state
+let myLocation = null;
+let locationOptIn = false;
+
+async function initLocation() {
+  try {
+    await iploc.reload({ fields: ["latitude", "longitude", "city"] });
+    const response = await fetch("https://api.ipify.org?format=json");
+    const { ip } = await response.json();
+    const loc = await iploc.lookup(ip);
+
+    if (loc && loc.latitude && loc.longitude) {
+      myLocation = {
+        lat: loc.latitude,
+        lon: loc.longitude,
+        city: loc.city || "Unknown"
+      };
+      console.log("[Geo] Location ready");
+    } else {
+      console.log("[Geo] Could not determine location from IP");
+    }
+  } catch (e) {
+    console.log("[Geo] Location lookup failed:", e.message);
+    myLocation = null;
+  }
+}
+
+initLocation();
 const PORT = process.env.PORT || 3000;
 
 // --- CONFIGURATION ---
@@ -37,19 +67,53 @@ const MAX_PEERS = 10000;
 
 const sseClients = new Set();
 
-seenPeers.set(MY_ID, { seq: mySeq, lastSeen: Date.now() });
+seenPeers.set(MY_ID, { seq: mySeq, lastSeen: Date.now(), loc: null });
 
-// Throttle updates to once per second
+// Generate GeoJSON FeatureCollection of peer locations, aggregated by city
+function getPeerLocations() {
+  const cityGroups = new Map();
+
+  for (const [id, data] of seenPeers) {
+    if (data.loc && data.loc.lat != null && data.loc.lon != null) {
+      const cityKey = data.loc.city || "Unknown";
+      if (!cityGroups.has(cityKey)) {
+        cityGroups.set(cityKey, {
+          lat: data.loc.lat,
+          lon: data.loc.lon,
+          count: 0,
+          hasSelf: false
+        });
+      }
+      const group = cityGroups.get(cityKey);
+      group.count++;
+      if (id === MY_ID) group.hasSelf = true;
+    }
+  }
+
+  const features = [];
+  for (const [city, data] of cityGroups) {
+    features.push({
+      type: "Feature",
+      properties: { city, count: data.count, hasSelf: data.hasSelf },
+      geometry: { type: "Point", coordinates: [data.lon, data.lat] }
+    });
+  }
+  return { type: "FeatureCollection", features };
+}
+
+// Throttle updates to once per second (force=true bypasses throttle)
 let lastBroadcast = 0;
-function broadcastUpdate() {
+function broadcastUpdate(force = false) {
   const now = Date.now();
-  if (now - lastBroadcast < 1000) return;
+  if (!force && now - lastBroadcast < 1000) return;
   lastBroadcast = now;
 
   const data = JSON.stringify({
     count: seenPeers.size,
     direct: swarm.connections.size,
     id: MY_ID,
+    locations: getPeerLocations(),
+    optedIn: locationOptIn,
   });
 
   for (const client of sseClients) {
@@ -70,6 +134,7 @@ swarm.on("connection", (socket) => {
     hops: 0,
     nonce: MY_NONCE,
     sig,
+    loc: locationOptIn ? myLocation : null,
   });
   socket.write(hello);
   broadcastUpdate();
@@ -85,7 +150,7 @@ swarm.on("connection", (socket) => {
         handleMessage(msg, socket);
       }
     } catch (e) {
-      // console.error('Invalid message', e);
+      // Invalid message format
     }
   });
 
@@ -106,7 +171,7 @@ discovery.flushed().then(() => {
 
 function handleMessage(msg, sourceSocket) {
   if (msg.type === "HEARTBEAT") {
-    const { id, seq, hops, nonce, sig } = msg;
+    const { id, seq, hops, nonce, sig, loc } = msg;
 
     // 1. Verify PoW
     if (!nonce) return;
@@ -152,8 +217,13 @@ function handleMessage(msg, sourceSocket) {
 
       const now = Date.now();
       const wasNew = !stored;
-      
-      seenPeers.set(id, { seq, lastSeen: now, key });
+
+      // Validate and store location if provided
+      const peerLoc = loc && typeof loc.lat === "number" && typeof loc.lon === "number"
+        ? { lat: loc.lat, lon: loc.lon, city: loc.city || null }
+        : null;
+
+      seenPeers.set(id, { seq, lastSeen: now, key, loc: peerLoc });
 
       if (wasNew) broadcastUpdate();
 
@@ -189,7 +259,7 @@ function relayMessage(msg, sourceSocket) {
 setInterval(() => {
   mySeq++;
 
-  seenPeers.set(MY_ID, { seq: mySeq, lastSeen: Date.now() });
+  seenPeers.set(MY_ID, { seq: mySeq, lastSeen: Date.now(), loc: locationOptIn ? myLocation : null });
 
   const sig = crypto
     .sign(null, Buffer.from(`seq:${mySeq}`), privateKey)
@@ -202,6 +272,7 @@ setInterval(() => {
       hops: 0,
       nonce: MY_NONCE,
       sig,
+      loc: locationOptIn ? myLocation : null,
     }) + "\n";
   for (const socket of swarm.connections) {
     socket.write(heartbeat);
@@ -247,6 +318,8 @@ app.get("/", (req, res) => {
         <head>
             <title>Hypermind</title>
             <meta name="viewport" content="width=device-width, initial-scale=1">
+            <link href="https://unpkg.com/maplibre-gl@5.0.0/dist/maplibre-gl.css" rel="stylesheet" />
+            <script src="https://unpkg.com/maplibre-gl@5.0.0/dist/maplibre-gl.js"></script>
             <style>
                 body { 
                     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
@@ -271,6 +344,81 @@ app.get("/", (req, res) => {
                     50% { transform: scale(1.1); color: #fff; }
                     100% { transform: scale(1); }
                 }
+                .map-container {
+                    position: relative;
+                    width: 900px;
+                    max-width: 90vw;
+                    height: 400px;
+                    margin: 1.5rem auto;
+                    border-radius: 8px;
+                    overflow: hidden;
+                    border: 1px solid #333;
+                    transition: all 0.3s ease;
+                }
+                .map-container.fullscreen {
+                    position: fixed;
+                    top: 0; left: 0;
+                    width: 100vw; height: 100vh;
+                    max-width: 100vw;
+                    z-index: 100;
+                    border-radius: 0;
+                    border: none;
+                    margin: 0;
+                }
+                #map {
+                    width: 100%;
+                    height: 100%;
+                    filter: blur(10px);
+                    transition: filter 0.5s ease;
+                }
+                #map.opted-in { filter: none; }
+                .map-controls {
+                    position: absolute;
+                    top: 8px; right: 8px;
+                    z-index: 10;
+                    display: flex;
+                    gap: 4px;
+                }
+                .map-btn {
+                    background: rgba(17, 17, 17, 0.8);
+                    border: 1px solid #4ade80;
+                    color: #4ade80;
+                    padding: 4px 8px;
+                    cursor: pointer;
+                    border-radius: 4px;
+                    font-size: 0.75rem;
+                    display: none;
+                }
+                .map-btn.visible { display: block; }
+                .optin-overlay {
+                    position: absolute;
+                    top: 0; left: 0;
+                    width: 100%; height: 100%;
+                    z-index: 5;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: rgba(0, 0, 0, 0.5);
+                }
+                .optin-overlay.hidden { display: none; }
+                .optin-btn {
+                    background: #4ade80;
+                    color: #111;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-weight: bold;
+                    font-size: 0.85rem;
+                }
+                .optin-btn:hover { background: #22c55e; }
+                .cluster-label {
+                    color: #fff;
+                    font-size: 11px;
+                    font-weight: bold;
+                    text-shadow: 0 0 4px rgba(0,0,0,0.8);
+                    pointer-events: none;
+                }
             </style>
         </head>
         <body>
@@ -278,6 +426,15 @@ app.get("/", (req, res) => {
             <div class="container">
                 <div id="count" class="count">${count}</div>
                 <div class="label">Active Nodes</div>
+                <div class="map-container" id="mapContainer">
+                    <div id="map"></div>
+                    <div class="optin-overlay" id="optinOverlay">
+                        <button class="optin-btn" onclick="optIn()">Enable Map</button>
+                    </div>
+                    <div class="map-controls">
+                        <button class="map-btn" id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
+                    </div>
+                </div>
                 <div class="footer">
                     powered by <a href="https://github.com/lklynet/hypermind" target="_blank">hypermind</a>
                 </div>
@@ -376,12 +533,178 @@ app.get("/", (req, res) => {
 
                 animate();
 
+                // MapLibre Map
+                const map = new maplibregl.Map({
+                    container: 'map',
+                    style: 'https://tiles.openfreemap.org/styles/liberty',
+                    center: [0, 20],
+                    zoom: 0.8,
+                    interactive: true
+                });
+
+                let locationOptedIn = false;
+
+                map.on('load', () => {
+                    map.addSource('peers', {
+                        type: 'geojson',
+                        data: { type: 'FeatureCollection', features: [] },
+                        cluster: true,
+                        clusterMaxZoom: 14,
+                        clusterRadius: 50,
+                        clusterProperties: {
+                            totalCount: ['+', ['get', 'count']],
+                            hasSelf: ['any', ['get', 'hasSelf']]
+                        }
+                    });
+
+                    // Cluster glow
+                    map.addLayer({
+                        id: 'cluster-glow',
+                        type: 'circle',
+                        source: 'peers',
+                        filter: ['has', 'point_count'],
+                        paint: {
+                            'circle-color': ['case', ['get', 'hasSelf'], '#4ade80', '#22d3ee'],
+                            'circle-radius': ['interpolate', ['linear'], ['get', 'totalCount'], 1, 25, 50, 45, 200, 60],
+                            'circle-opacity': 0.2,
+                            'circle-blur': 1
+                        }
+                    });
+
+                    // Cluster core dot
+                    map.addLayer({
+                        id: 'cluster-points',
+                        type: 'circle',
+                        source: 'peers',
+                        filter: ['has', 'point_count'],
+                        paint: {
+                            'circle-color': ['case', ['get', 'hasSelf'], '#4ade80', '#22d3ee'],
+                            'circle-radius': ['interpolate', ['linear'], ['get', 'totalCount'], 1, 10, 50, 20, 200, 30],
+                            'circle-opacity': 0.9
+                        }
+                    });
+
+                    // Individual city glow (unclustered)
+                    map.addLayer({
+                        id: 'city-glow',
+                        type: 'circle',
+                        source: 'peers',
+                        filter: ['!', ['has', 'point_count']],
+                        paint: {
+                            'circle-color': ['case', ['get', 'hasSelf'], '#4ade80', '#22d3ee'],
+                            'circle-radius': ['interpolate', ['linear'], ['get', 'count'], 1, 20, 10, 35, 50, 50],
+                            'circle-opacity': 0.2,
+                            'circle-blur': 1
+                        }
+                    });
+
+                    // Individual city core dot (unclustered)
+                    map.addLayer({
+                        id: 'city-points',
+                        type: 'circle',
+                        source: 'peers',
+                        filter: ['!', ['has', 'point_count']],
+                        paint: {
+                            'circle-color': ['case', ['get', 'hasSelf'], '#4ade80', '#22d3ee'],
+                            'circle-radius': ['interpolate', ['linear'], ['get', 'count'], 1, 6, 10, 12, 50, 18],
+                            'circle-opacity': 0.9
+                        }
+                    });
+
+                    // Pulse animation - glow expands and fades
+                    let pulsePhase = 0;
+                    setInterval(() => {
+                        pulsePhase = (pulsePhase + 0.05) % (Math.PI * 2);
+                        const scale = 1 + Math.sin(pulsePhase) * 0.3;
+                        const opacity = 0.25 - Math.sin(pulsePhase) * 0.15;
+                        if (map.getLayer('city-glow')) {
+                            map.setPaintProperty('city-glow', 'circle-opacity', Math.max(0.05, opacity));
+                            map.setPaintProperty('city-glow', 'circle-radius',
+                                ['interpolate', ['linear'], ['get', 'count'], 1, 20 * scale, 10, 35 * scale, 50, 50 * scale]);
+                        }
+                        if (map.getLayer('cluster-glow')) {
+                            map.setPaintProperty('cluster-glow', 'circle-opacity', Math.max(0.05, opacity));
+                            map.setPaintProperty('cluster-glow', 'circle-radius',
+                                ['interpolate', ['linear'], ['get', 'totalCount'], 1, 25 * scale, 50, 45 * scale, 200, 60 * scale]);
+                        }
+                    }, 50);
+
+                    // HTML markers for counts (clusters and individual cities)
+                    const countMarkers = {};
+
+                    function updateCountMarkers() {
+                        const source = map.getSource('peers');
+                        if (!source) return;
+
+                        // Get visible features (includes both clusters and individual points)
+                        const features = map.querySourceFeatures('peers');
+                        const seenIds = new Set();
+
+                        features.forEach(f => {
+                            const coords = f.geometry.coordinates;
+                            const isCluster = f.properties.cluster;
+                            const count = isCluster ? f.properties.totalCount : f.properties.count;
+                            const markerId = isCluster ? 'cluster-' + f.properties.cluster_id : 'city-' + f.properties.city;
+
+                            if (!count) return;
+                            seenIds.add(markerId);
+
+                            if (!countMarkers[markerId]) {
+                                const el = document.createElement('div');
+                                el.className = 'cluster-label';
+                                el.innerText = count;
+                                countMarkers[markerId] = new maplibregl.Marker({ element: el })
+                                    .setLngLat(coords)
+                                    .addTo(map);
+                            } else {
+                                countMarkers[markerId].setLngLat(coords);
+                                countMarkers[markerId].getElement().innerText = count;
+                            }
+                        });
+
+                        // Remove stale markers
+                        Object.keys(countMarkers).forEach(id => {
+                            if (!seenIds.has(id)) {
+                                countMarkers[id].remove();
+                                delete countMarkers[id];
+                            }
+                        });
+                    }
+
+                    map.on('moveend', updateCountMarkers);
+                    map.on('sourcedata', (e) => {
+                        if (e.sourceId === 'peers' && e.isSourceLoaded) {
+                            updateCountMarkers();
+                        }
+                    });
+                });
+
+                async function optIn() {
+                    const res = await fetch('/api/location-optin', { method: 'POST' });
+                    if (res.ok) {
+                        locationOptedIn = true;
+                        document.getElementById('map').classList.add('opted-in');
+                        document.getElementById('optinOverlay').classList.add('hidden');
+                        document.getElementById('fullscreenBtn').classList.add('visible');
+                        map.resize();
+                    }
+                }
+
+                function toggleFullscreen() {
+                    if (!locationOptedIn) return;
+                    const container = document.getElementById('mapContainer');
+                    const btn = document.getElementById('fullscreenBtn');
+                    container.classList.toggle('fullscreen');
+                    btn.textContent = container.classList.contains('fullscreen') ? 'Exit' : 'Fullscreen';
+                    map.resize();
+                }
+
                 // Use Server-Sent Events for realtime updates
                 const evtSource = new EventSource("/events");
-                
+
                 evtSource.onmessage = (event) => {
                     const data = JSON.parse(event.data);
-                    
+
                     updateParticles(data.count);
 
                     // Only update and animate if changed
@@ -391,10 +714,23 @@ app.get("/", (req, res) => {
                         void countEl.offsetWidth; // trigger reflow
                         countEl.classList.add('pulse');
                     }
-                    
+
                     directEl.innerText = data.direct;
+
+                    // Auto-reveal map if server already opted in
+                    if (data.optedIn && !locationOptedIn) {
+                        locationOptedIn = true;
+                        document.getElementById('map').classList.add('opted-in');
+                        document.getElementById('optinOverlay').classList.add('hidden');
+                        document.getElementById('fullscreenBtn').classList.add('visible');
+                    }
+
+                    // Always update map locations (blur handles privacy before opt-in)
+                    if (data.locations && map.isStyleLoaded() && map.getSource('peers')) {
+                        map.getSource('peers').setData(data.locations);
+                    }
                 };
-                
+
                 evtSource.onerror = (err) => {
                     console.error("EventSource failed:", err);
                 };
@@ -413,12 +749,14 @@ app.get("/events", (req, res) => {
 
   sseClients.add(res);
 
-  const data = JSON.stringify({
+  const initialData = JSON.stringify({
     count: seenPeers.size,
     direct: swarm.connections.size,
     id: MY_ID,
+    locations: getPeerLocations(),
+    optedIn: locationOptIn,
   });
-  res.write(`data: ${data}\n\n`);
+  res.write(`data: ${initialData}\n\n`);
 
   req.on("close", () => {
     sseClients.delete(res);
@@ -431,6 +769,24 @@ app.get("/api/stats", (req, res) => {
     direct: swarm.connections.size,
     id: MY_ID,
   });
+});
+
+app.post("/api/location-optin", async (req, res) => {
+  locationOptIn = true;
+
+  // If location not ready yet, try to fetch it now
+  if (!myLocation) {
+    await initLocation();
+  }
+
+  // Update self location in seenPeers
+  const selfData = seenPeers.get(MY_ID);
+  if (selfData && myLocation) {
+    selfData.loc = myLocation;
+    seenPeers.set(MY_ID, selfData);
+  }
+  broadcastUpdate(true); // Force bypass throttle
+  res.json({ success: true, location: myLocation, hasLocation: !!myLocation });
 });
 
 app.listen(PORT, () => {
