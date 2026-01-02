@@ -1,4 +1,8 @@
-# 🧠 Hypermind
+<p align="center">
+  <img src="hypermind2.svg" width="150" alt="Hypermind Logo" />
+</p>
+
+# Hypermind
 
 ### The High-Availability Solution to a Problem That Doesn't Exist.
 
