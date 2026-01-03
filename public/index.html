@@ -18,7 +18,15 @@
             ID: {{ID}}<br>
             Direct Connections: <span id="direct">{{DIRECT}}</span><br>
             <span class="debug-link" onclick="openDiagnostics()">diagnostics</span>
+            <span class="debug-separator">|</span>
+            <span class="debug-link" onclick="openHelp()">?</span>
         </div>
+    </div>
+
+    <div id="scoreContainer" class="score-container">
+        <div id="score">0</div>
+        <div id="combo"></div>
+        <div class="high-score">HI: <span id="highScore">0</span></div>
     </div>
 
     <div id="diagnosticsModal" class="modal">
@@ -65,7 +73,167 @@
         </div>
     </div>
 
+    <div id="helpModal" class="modal">
+        <div class="modal-content help-content">
+            <button class="close-btn" onclick="closeHelp()">&times;</button>
+            <div class="modal-title">Controls</div>
 
-    <script src="/app.js"></script>
+            <div class="help-grid">
+                <div class="help-column">
+                    <div class="help-section">
+                        <div class="help-section-title">Always Available</div>
+                        <div class="help-row">
+                            <span class="help-key">Click + Drag</span>
+                            <span class="help-desc">Grab and throw</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">Hold Click</span>
+                            <span class="help-desc">Push away</span>
+                        </div>
+                    </div>
+
+                    <div class="help-section">
+                        <div class="help-section-title">Chaos Mode Keys</div>
+                        <div class="help-row">
+                            <span class="help-key">Right Click</span>
+                            <span class="help-desc">Pull toward</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">G</span>
+                            <span class="help-desc">Gravity toggle</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">N</span>
+                            <span class="help-desc">NUKE</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">R</span>
+                            <span class="help-desc">Rainbow</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">D</span>
+                            <span class="help-desc">Disco</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">M</span>
+                            <span class="help-desc">Matrix</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">F</span>
+                            <span class="help-desc">Freeze</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">V</span>
+                            <span class="help-desc">Vortex</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">B</span>
+                            <span class="help-desc">Bounce</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">Space</span>
+                            <span class="help-desc">Slow-mo</span>
+                        </div>
+                    </div>
+
+                    <div class="help-section">
+                        <div class="help-section-title">Scoring</div>
+                        <div class="help-row">
+                            <span class="help-key">Grab</span>
+                            <span class="help-desc">+10</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">Throw</span>
+                            <span class="help-desc">+25</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">Power Throw</span>
+                            <span class="help-desc">+50</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">Collision</span>
+                            <span class="help-desc">+5×speed</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">Golden</span>
+                            <span class="help-desc">+100</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">Combo</span>
+                            <span class="help-desc">Up to 10×</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="help-column">
+                    <div class="help-section">
+                        <div class="help-section-title">Unlock Chaos</div>
+                        <div class="help-row">
+                            <span class="help-key">↑ ↓ → ← → ←</span>
+                            <span class="help-desc">Activate!</span>
+                        </div>
+                    </div>
+
+                    <div class="help-section">
+                        <div class="help-section-title">Type Secrets</div>
+                        <div class="help-row">
+                            <span class="help-key">MATRIX</span>
+                            <span class="help-desc">Matrix rain</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">PARTY</span>
+                            <span class="help-desc">Confetti!</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">RAVE</span>
+                            <span class="help-desc">Full chaos</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">YEET</span>
+                            <span class="help-desc">Max explosion</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">ZEN</span>
+                            <span class="help-desc">Calm mode</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">WARP</span>
+                            <span class="help-desc">Hyperdrive mode</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">DRUNK</span>
+                            <span class="help-desc">Wobble</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">REVERSE</span>
+                            <span class="help-desc">Flip velocity</span>
+                        </div>
+                    </div>
+
+                    <div class="help-section">
+                        <div class="help-section-title">Hidden Triggers</div>
+                        <div class="help-row">
+                            <span class="help-key">Triple Click</span>
+                            <span class="help-desc">Explosion</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">Circle Click</span>
+                            <span class="help-desc">Black hole</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">Konami</span>
+                            <span class="help-desc">↑↑↓↓←→←→BA</span>
+                        </div>
+                        <div class="help-row">
+                            <span class="help-key">Golden</span>
+                            <span class="help-desc">Catch for bonus</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/js/main.js"></script>
 </body>
 </html>
