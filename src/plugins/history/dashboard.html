@@ -1,0 +1,99 @@
+  <!DOCTYPE html>
+  <html>
+  <head>
+      <title>Hypermind - History</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <link rel="icon" href="/favicon.ico">
+      <link rel="stylesheet" href="/style.css">
+      <style>
+          body {
+              display: block;
+              height: auto;
+              padding: 2rem;
+          }
+
+          .history-container {
+              max-width: 1200px;
+              margin: 0 auto;
+          }
+
+          .header {
+              text-align: center;
+              margin-bottom: 2rem;
+          }
+
+          .header h1 {
+              font-size: 2rem;
+              color: #4ade80;
+              margin-bottom: 0.5rem;
+          }
+
+          .controls {
+              display: flex;
+              gap: 0.5rem;
+              margin: 2rem 0;
+              justify-content: center;
+              flex-wrap: wrap;
+          }
+
+          .time-btn {
+              padding: 0.5rem 1rem;
+              background: #1a1a1a;
+              border: 1px solid #222;
+              color: #4b5563;
+              cursor: pointer;
+              border-radius: 4px;
+          }
+
+          .time-btn.active {
+              color: #4ade80;
+              border-color: #4ade80;
+          }
+
+          .chart-container {
+              background: #0a0a0a;
+              border: 1px solid #222;
+              padding: 1rem;
+              margin: 1.5rem 0;
+              height: 300px;
+          }
+
+          .back-link {
+              margin-top: 2rem;
+              text-align: center;
+          }
+      </style>
+  </head>
+  <body>
+      <div class="history-container">
+          <div class="header">
+              <h1>History</h1>
+              <p style="color: #4b5563; font-size: 0.9rem;">Active nodes & direct connections over time</p>
+          </div>
+
+        <div class="controls">
+            <button class="time-btn active" data-range="5min">5 min</button>
+            <button class="time-btn" data-range="1h">1 hour</button>
+            <button class="time-btn" data-range="24h">24 hours</button>
+            <button class="time-btn" data-range="7d">7 days</button>
+        </div>
+
+        <div>
+            <h2 style="color: #4ade80; font-size: 1.2rem; margin: 1rem 0 0.5rem;">Total Unique Peers</h2>
+            <div class="chart-container"><canvas id="countChart"></canvas></div>
+        </div>
+
+        <div>
+            <h2 style="color: #60a5fa; font-size: 1.2rem; margin: 1rem 0 0.5rem;">Direct Connections</h2>
+            <div class="chart-container"><canvas id="directChart"></canvas></div>
+        </div>
+
+          <div class="back-link">
+              <a href="/">← Back to main</a>
+          </div>
+      </div>
+
+      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+      <script src="/history.js"></script>
+  </body>
+  </html>

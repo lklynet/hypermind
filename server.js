@@ -56,12 +56,26 @@ const main = async () => {
   }, DIAGNOSTICS_INTERVAL);
 
   const app = createServer(identity, peerManager, swarmManager, sseManager, diagnostics);
+
+  // Loading History Manager plugin
+  if (process.env.ENABLE_HISTORY_PLUGIN === 'true') {
+    try {
+      const HistoryPlugin = require('./src/plugins/history');
+      HistoryPlugin.init(peerManager, swarmManager);
+      HistoryPlugin.setupRoutes(app);
+    } catch (error) {
+      console.warn('Failed to load history plugin:', error.message);
+    }
+  }
+
   startServer(app, identity);
 
   const handleShutdown = () => {
     diagnostics.stopLogging();
     swarmManager.shutdown();
   };
+
+
 
   process.on("SIGINT", handleShutdown);
   process.on("SIGTERM", handleShutdown);
