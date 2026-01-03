@@ -117,6 +117,9 @@ Add this to your `services.yaml`:
 
 ```
 
+To get the icon to work, you have to add the icon to `/app/public/icons`. If you have homepage running in a docker you mount an extra volume in your compose file. 
+See detailed [instructions](https://gethomepage.dev/configs/services/#icons). 
+
 ## » Environment Variables
 
 | Variable | Default | Description |
