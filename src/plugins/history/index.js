@@ -1,6 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const { config } = require('dotenv');
 
 const dbPath = path.join(__dirname, 'history.db');
 const db = new Database(dbPath);
@@ -23,7 +24,6 @@ const log = (count, direct) => {
         const now = Date.now();
         db.prepare('INSERT INTO count_metrics (timestamp, value) VALUES (?, ?)').run(now, count);
         db.prepare('INSERT INTO direct_metrics (timestamp, value) VALUES (?, ?)').run(now, direct);
-        console.log(`Logged metrics - Count: ${count}, Direct: ${direct}`);
     } catch (error) {
         console.error('Error logging metrics:', error.message);
     }
@@ -42,27 +42,41 @@ const log = (count, direct) => {
     });
 
       app.get('/history/data', (req, res) => {
-          const range = req.query.range || '5min';
+        const range = req.query.range || '5min';
 
-          const ranges = {
-              '5min': 5 * 60 * 1000,
-              '1h': 60 * 60 * 1000,
-              '24h': 24 * 60 * 60 * 1000,
-              '7d': 7 * 24 * 60 * 60 * 1000
-          };
+        const ranges = {
+            '5min': { duration: 5 * 60 * 1000, bucket: 10000 },      // 10s buckets
+            '1h': { duration: 60 * 60 * 1000, bucket: 60000 },       // 1min buckets
+            '24h': { duration: 24 * 60 * 60 * 1000, bucket: 300000 }, // 5min buckets
+            '7d': { duration: 7 * 24 * 60 * 60 * 1000, bucket: 900000 } // 15hour buckets
+        };
 
-          const duration = ranges[range] || ranges['5min'];
-          const startTime = Date.now() - duration;
+        const config = ranges[range] || ranges['5min'];
+        const startTime = Date.now() - config.duration;
+        
+        try {
+            const countData = db.prepare(`SELECT 
+            CAST(timestamp / ? AS INTEGER) as bucket, MIN(timestamp) AS timestamp, AVG(value) as value
+            FROM count_metrics 
+            WHERE timestamp >= ?
+            GROUP BY bucket
+            ORDER BY bucket
+            `).all(config.bucket, startTime);
 
-          try {
-              const countData = db.prepare('SELECT timestamp, value FROM count_metrics WHERE timestamp >= ? ORDER BY timestamp').all(startTime);
-              const directData = db.prepare('SELECT timestamp, value FROM direct_metrics WHERE timestamp >= ? ORDER BY timestamp').all(startTime);
+            const directData = db.prepare(`SELECT 
+            CAST(timestamp / ? AS INTEGER) as bucket, MIN(timestamp) as timestamp, AVG(value) as value
+            FROM direct_metrics 
+            WHERE timestamp >= ?
+            GROUP BY bucket
+            ORDER BY bucket
+            `).all(config.bucket, startTime);
 
-              res.json({
-                  count: countData,
-                  direct: directData,
-                  range
-              });
+            res.json({
+                count: countData,
+                direct: directData,
+                range
+            });
+
           } catch (err) {
               res.status(500).json({ error: err.message });
           }
@@ -71,7 +85,6 @@ const log = (count, direct) => {
 
 const init = (peerManager, swarmManager) => {
     console.log('History plugin initialized.');
-    console.log('Initial peerManager.size:', peerManager.size);
     setInterval(() => {
         log(peerManager.totalUniquePeers, swarmManager.getSwarm().connections.size);
     }, 10000);
