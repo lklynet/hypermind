@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const { POW_PREFIX } = require("../config/constants");
+const { VERIFICATION_POW_PREFIX } = require("../config/constants");
 
 const verifyPoW = (id, nonce) => {
     if (!nonce) return false;
@@ -7,7 +7,7 @@ const verifyPoW = (id, nonce) => {
         .createHash("sha256")
         .update(id + nonce)
         .digest("hex");
-    return powHash.startsWith(POW_PREFIX);
+    return powHash.startsWith(VERIFICATION_POW_PREFIX);
 }
 
 const signMessage = (message, privateKey) => {

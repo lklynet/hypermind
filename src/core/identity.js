@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const { POW_PREFIX } = require("../config/constants");
+const { MY_POW_PREFIX } = require("../config/constants");
 
 const generateIdentity = () => {
     const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519");
@@ -11,7 +11,7 @@ const generateIdentity = () => {
             .createHash("sha256")
             .update(id + nonce)
             .digest("hex");
-        if (hash.startsWith(POW_PREFIX)) break;
+        if (hash.startsWith(MY_POW_PREFIX)) break;
         nonce++;
     }
 

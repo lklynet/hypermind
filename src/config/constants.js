@@ -9,9 +9,12 @@ const TOPIC = crypto.createHash("sha256").update(TOPIC_NAME).digest();
  * 
  * I ran it that way and I was fairly isolated, with hundreds of failed POW, shame.
  * adding an extra 0 makes it very expensive on attacker to make it worth the fun for them, so maybe consider it.
- * 
+ * ----
+ * ricardoboss: added a way to get the best of both worlds: newer nodes will use a harder POW, making them compatible
+ * with others who use a harder POW while still being able to accept "old" POWs from clients
  */
-const POW_PREFIX = "0000";
+const MY_POW_PREFIX = "00000";
+const VERIFICATION_POW_PREFIX = "0000";
 
 const MAX_PEERS = parseInt(process.env.MAX_PEERS) || 1000000;
 const MAX_MESSAGE_SIZE = 2048;
@@ -28,7 +31,8 @@ const PORT = process.env.PORT || 3000;
 module.exports = {
     TOPIC_NAME,
     TOPIC,
-    POW_PREFIX,
+    MY_POW_PREFIX,
+    VERIFICATION_POW_PREFIX,
     MAX_PEERS,
     MAX_MESSAGE_SIZE,
     MAX_RELAY_HOPS,
