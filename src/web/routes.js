@@ -33,6 +33,7 @@ const setupRoutes = (app, identity, peerManager, swarm, sseManager, diagnostics)
             direct: swarm.getSwarm().connections.size,
             id: identity.id,
             diagnostics: diagnostics.getStats(),
+            totalRAM: peerManager.getTotalAvailableRAM(),
         });
         res.write(`data: ${data}\n\n`);
 
@@ -47,6 +48,8 @@ const setupRoutes = (app, identity, peerManager, swarm, sseManager, diagnostics)
             direct: swarm.getSwarm().connections.size,
             id: identity.id,
             diagnostics: diagnostics.getStats(),
+            totalAvailableRAM: peerManager.getTotalAvailableRAM(),
+            totalAvailableRAMGB: (peerManager.getTotalAvailableRAM() / (1024 * 1024 * 1024)).toFixed(2),
         });
     });
 

@@ -1,4 +1,5 @@
 const { MAX_PEERS, PEER_TIMEOUT } = require("../config/constants");
+const os = require("os");
 
 class PeerManager {
     constructor() {
@@ -6,7 +7,21 @@ class PeerManager {
         this.mySeq = 0;
     }
 
-    addOrUpdatePeer(id, seq, key) {
+    getAvailableRAM() {
+        return os.freemem();
+    }
+
+    getTotalAvailableRAM() {
+        let total = 0;
+        for (const [id, data] of this.seenPeers) {
+            if (data.availableRAM) {
+                total += data.availableRAM;
+            }
+        }
+        return total;
+    }
+
+    addOrUpdatePeer(id, seq, key, availableRAM = null) {
         const stored = this.seenPeers.get(id);
         const wasNew = !stored;
 
@@ -14,6 +29,7 @@ class PeerManager {
             seq,
             lastSeen: Date.now(),
             key,
+            availableRAM: availableRAM !== null ? availableRAM : (stored ? stored.availableRAM : 0),
         });
 
         return wasNew;
