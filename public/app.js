@@ -124,14 +124,29 @@ evtSource.onmessage = (event) => {
 
     if (data.diagnostics) {
         const d = data.diagnostics;
+        
+        const formatBandwidth = (bytes) => {
+            const kb = bytes / 1024;
+            const mb = kb / 1024;
+            const gb = mb / 1024;
+            
+            if (gb >= 1) {
+                return gb.toFixed(2) + ' GB';
+            } else if (mb >= 1) {
+                return mb.toFixed(2) + ' MB';
+            } else {
+                return kb.toFixed(1) + ' KB';
+            }
+        };
+        
         document.getElementById('diag-heartbeats-rx').innerText = d.heartbeatsReceived.toLocaleString();
         document.getElementById('diag-heartbeats-tx').innerText = d.heartbeatsRelayed.toLocaleString();
         document.getElementById('diag-new-peers').innerText = d.newPeersAdded.toLocaleString();
         document.getElementById('diag-dup-seq').innerText = d.duplicateSeq.toLocaleString();
         document.getElementById('diag-invalid-pow').innerText = d.invalidPoW.toLocaleString();
         document.getElementById('diag-invalid-sig').innerText = d.invalidSig.toLocaleString();
-        document.getElementById('diag-bandwidth-in').innerText = (d.bytesReceived / 1024).toFixed(1) + ' KB';
-        document.getElementById('diag-bandwidth-out').innerText = (d.bytesRelayed / 1024).toFixed(1) + ' KB';
+        document.getElementById('diag-bandwidth-in').innerText = formatBandwidth(d.bytesReceived);
+        document.getElementById('diag-bandwidth-out').innerText = formatBandwidth(d.bytesRelayed);
         document.getElementById('diag-leave').innerText = d.leaveMessages.toLocaleString();
     }
 };
