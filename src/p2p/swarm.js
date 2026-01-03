@@ -1,4 +1,5 @@
 const Hyperswarm = require("hyperswarm");
+const net = require("net");
 const { signMessage } = require("../core/security");
 const { TOPIC, TOPIC_NAME, HEARTBEAT_INTERVAL, MAX_CONNECTIONS, CONNECTION_ROTATION_INTERVAL } = require("../config/constants");
 
@@ -16,11 +17,36 @@ class SwarmManager {
         this.rotationInterval = null;
     }
 
-    async start() {
+    /**
+     * Start swarm with optional bootstrap peer to connect to directly.
+     * @param {Object|null} bootstrapPeer - {ip, port} of bootstrap peer
+     */
+    async start(bootstrapPeer = null) {
+        if (bootstrapPeer) {
+            console.log(`[swarm] Received bootstrap peer: ${JSON.stringify(bootstrapPeer)}`);
+        }
+
         this.swarm.on("connection", (socket) => this.handleConnection(socket));
 
         const discovery = this.swarm.join(TOPIC);
         await discovery.flushed();
+
+        // If a bootstrap peer was found, attempt direct connection to it
+        // This establishes an initial peer connection before DHT discovery
+        if (bootstrapPeer && bootstrapPeer.ip) {
+            console.log(`[swarm] Bootstrap peer provided: ${bootstrapPeer.ip}:${bootstrapPeer.port}`);
+            console.log(`[swarm] Attempting direct connection to bootstrap peer...`);
+            setTimeout(() => {
+                const socket = net.createConnection(bootstrapPeer.port, bootstrapPeer.ip, () => {
+                    console.log(`[swarm] ✓ Successfully connected to bootstrap peer ${bootstrapPeer.ip}`);
+                    this.handleConnection(socket);
+                });
+                socket.setTimeout(3000);
+                socket.on('error', (err) => {
+                    console.log(`[swarm] ✗ Bootstrap peer connection failed: ${err.message}`);
+                });
+            }, 100); // Small delay to let swarm initialize
+        }
 
         this.startHeartbeat();
         this.startRotation();

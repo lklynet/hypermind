@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const crypto = require('crypto');
 const { generateIdentity } = require("./src/core/identity");
 const { PeerManager } = require("./src/state/peers");
 const { DiagnosticsManager } = require("./src/state/diagnostics");
@@ -8,6 +9,7 @@ const { relayMessage } = require("./src/p2p/relay");
 const { SwarmManager } = require("./src/p2p/swarm");
 const { SSEManager } = require("./src/web/sse");
 const { createServer, startServer } = require("./src/web/server");
+const { bootstrapPeers } = require("./src/discovery/bootstrap");
 const { DIAGNOSTICS_INTERVAL } = require("./src/config/constants");
 
 const main = async () => {
@@ -44,7 +46,13 @@ const main = async () => {
     broadcastUpdate
   );
 
-  await swarmManager.start();
+  // Bootstrap phase: attempt to find peers via cache or IPv4 scan before joining DHT
+  // Use entropy from crypto for deterministic per-node Feistel seed
+  const bootstrapSeed = crypto.randomBytes(8).readBigUInt64BE();
+  console.log(`[main] Bootstrap seed: ${bootstrapSeed.toString(16)}`);
+  const bootstrapPeer = await bootstrapPeers(Number(bootstrapSeed), identity);
+
+  await swarmManager.start(bootstrapPeer);
 
   diagnostics.startLogging(
     () => peerManager.size,

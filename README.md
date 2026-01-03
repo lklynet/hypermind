@@ -35,6 +35,17 @@ We utilize the **Hyperswarm** DHT (Distributed Hash Table) to achieve a singular
 
 If you turn your container off, you vanish from the count. If everyone turns it off, the network ceases to exist. If you turn it back on, you are the Creator of the Universe (Population: 1).
 
+### Peer Bootstrap Strategy
+
+When your node starts, it uses a multi-phase bootstrap strategy to find peers. By default, it skips directly to DHT discovery, which is simple and works everywhere. If you want faster initial discovery on your network, you can opt into IPv4 scanning.
+
+**Phase 1: Cached Peers** - If peer caching is enabled, the node will first try to reconnect to peers it has seen before. On startup, if any of these cached peers are still online, connection happens instantly without waiting for discovery. This is only used if you explicitly enable PEER_CACHE_ENABLED. Cached peers older than 24 hours are automatically pruned as stale.
+
+**Phase 2: IPv4 Address Space Scan (Optional)** - If you enable ENABLE_IPV4_SCAN, the node will perform an intelligent scan of the IPv4 address space looking for other Hypermind nodes on your configured port. Instead of scanning sequentially (which would take forever), it uses a Feistel cipher to generate a randomized enumeration of addresses, with each node getting a unique scan order to distribute the search load evenly. This scan times out after a configurable duration before moving on. This feature is disabled by default and must be explicitly enabled if you want it.
+
+**Phase 3: DHT Discovery** - The node joins the Hyperswarm DHT under the topic 'hypermind-lklynet-v1' and waits for peers. This always works eventually and is the default discovery mechanism for all nodes. It may take longer on initial startup without the optional IPv4 scan, but it is completely reliable.
+
+
 ## » Deployment
 
 ### Docker (The Fast Way)
@@ -126,6 +137,13 @@ See detailed [instructions](https://gethomepage.dev/configs/services/#icons).
 | --- | --- | --- |
 | `PORT` | `3000` | The port the web dashboard listens on. Since `--network host` is used, this port opens directly on the host. |
 | `MAX_PEERS` | `1000000` | Maximum number of peers to track in the swarm. Unless you're expecting the entire internet to join, the default is probably fine. |
+| `ENABLE_IPV4_SCAN` | `false` | Enable IPv4 address space scanning for peer discovery. Disabled by default. Set to `true` to scan the entire IPv4 Network for Hypermind nodes. Most users should leave this disabled and rely on DHT discovery. |
+| `SCAN_PORT` | `3000` | The port to scan on remote IPv4 addresses when IPv4 scanning is enabled. This should match the port other nodes are listening on. |
+| `BOOTSTRAP_TIMEOUT` | `10000` | Time in milliseconds to spend scanning the IPv4 address space before giving up and using DHT discovery. Only used if ENABLE_IPV4_SCAN is true. Set to 0 to skip scanning and go straight to DHT. |
+| `PEER_CACHE_ENABLED` | `false` | Enable or disable the peer cache feature. Set to `true` to cache discovered peers for faster reconnection on restart. Cache is disabled by default. |
+| `PEER_CACHE_PATH` | `./peers.json` | Path to the JSON file where discovered peers are cached (only used if PEER_CACHE_ENABLED is true). |
+| `PEER_CACHE_MAX_AGE` | `86400` | Maximum age in seconds for cached peers before they are considered stale and removed. Default is 24 hours. Only applies when cache is enabled. |
+| `BOOTSTRAP_PEER_IP` | (unset) | Debug mode: Set this to an IPv4 address to skip all bootstrap phases and connect directly to that peer. Useful for testing and scenarios where you know peer addresses in advance. |
 
 ## » Usage
 
@@ -164,7 +182,23 @@ PORT=3001 npm start
 
 ```
 
-They should discover each other, and the number will become `2`. Dopamine achieved.
+They should discover each other via DHT, and the number will become 2. Dopamine achieved.
+
+### Fast Bootstrap Testing
+
+For testing scenarios where you want to skip the IPv4 scan and immediately use DHT discovery:
+
+```bash
+BOOTSTRAP_TIMEOUT=0 npm start
+```
+
+Or if you know the exact IP of another node (useful in docker-compose or test environments):
+
+```bash
+BOOTSTRAP_PEER_IP=192.168.1.100 npm start
+```
+
+This connects directly to that peer, skipping all bootstrap phases. If the connection fails, it falls back to normal bootstrap automatically.
 
 ---
 
@@ -175,6 +209,9 @@ A: No. We respect your GPU too much.
 
 **Q: Does this store data?**
 A: No. It has the short-term working memory of a honeybee (approx. 2.5 seconds). Which is biologically accurate and thematically consistent.
+
+**Q: Should I enable IPv4 scanning?**
+A: Probably not. DHT discovery works fine and doesn't require any special configuration. IPv4 scanning is there if you want extremely slow initial peer discovery or if you hate your IP's reputation, but it is not necessary for the network to function. Most deployments should just leave it disabled and let DHT do its thing.
 
 **Q: Why did you make this?**
 A: The homelab must grow. ¯\\_(ツ)_/¯

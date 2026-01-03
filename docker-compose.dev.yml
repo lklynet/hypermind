@@ -7,3 +7,8 @@ services:
     restart: unless-stopped
     environment:
       - PORT=3000
+      # Enable IPv4 scanning (disabled by default, uses DHT only)
+      # - ENABLE_IPV4_SCAN=true
+      # Debug: uncomment to connect directly to a peer IP (skip scan/cache)
+      # This is useful for testing with multiple local instances
+      # - BOOTSTRAP_PEER_IP=127.0.0.1

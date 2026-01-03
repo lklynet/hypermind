@@ -25,6 +25,18 @@ const BROADCAST_THROTTLE = 1000;
 const DIAGNOSTICS_INTERVAL = 10000;
 const PORT = process.env.PORT || 3000;
 
+// Bootstrap configuration
+const ENABLE_IPV4_SCAN = process.env.ENABLE_IPV4_SCAN === 'true' || false; // Disabled by default
+const SCAN_PORT = parseInt(process.env.SCAN_PORT) || 3000;
+const BOOTSTRAP_TIMEOUT = parseInt(process.env.BOOTSTRAP_TIMEOUT) || 10000;
+const PEER_CACHE_ENABLED = process.env.PEER_CACHE_ENABLED === 'true' || false; // Disabled by default
+const PEER_CACHE_PATH = process.env.PEER_CACHE_PATH || './peers.json';
+const PEER_CACHE_MAX_AGE = parseInt(process.env.PEER_CACHE_MAX_AGE) || 86400; // 24 hours in seconds
+const BOOTSTRAP_PEER_IP = process.env.BOOTSTRAP_PEER_IP || null; // Debug: direct peer IP (skip scan/cache)
+const MAX_SCAN_ATTEMPTS = 500000;
+const SCAN_CONCURRENCY = 50;
+const SCAN_CONNECTION_TIMEOUT = 300;
+
 module.exports = {
     TOPIC_NAME,
     TOPIC,
@@ -39,4 +51,14 @@ module.exports = {
     BROADCAST_THROTTLE,
     DIAGNOSTICS_INTERVAL,
     PORT,
+    ENABLE_IPV4_SCAN,
+    SCAN_PORT,
+    BOOTSTRAP_TIMEOUT,
+    PEER_CACHE_ENABLED,
+    PEER_CACHE_PATH,
+    PEER_CACHE_MAX_AGE,
+    BOOTSTRAP_PEER_IP,
+    MAX_SCAN_ATTEMPTS,
+    SCAN_CONCURRENCY,
+    SCAN_CONNECTION_TIMEOUT,
 };
