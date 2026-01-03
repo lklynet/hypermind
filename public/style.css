@@ -55,7 +55,6 @@ a { color: #4b5563; text-decoration: none; border-bottom: 1px dotted #4b5563; }
     box-shadow: 0 0 12px rgba(74, 222, 128, 0.3);
 }
 .map-container.collapsed #map,
-.map-container.collapsed .optin-overlay,
 .map-container.collapsed .map-controls {
     opacity: 0;
     pointer-events: none;
@@ -104,10 +103,8 @@ a { color: #4b5563; text-decoration: none; border-bottom: 1px dotted #4b5563; }
 #map {
     width: 100%;
     height: 100%;
-    filter: blur(10px);
-    transition: filter 0.5s ease, opacity 0.3s ease;
+    transition: opacity 0.3s ease;
 }
-#map.opted-in { filter: none; }
 .map-controls {
     position: absolute;
     top: 8px; right: 8px;
@@ -124,32 +121,7 @@ a { color: #4b5563; text-decoration: none; border-bottom: 1px dotted #4b5563; }
     cursor: pointer;
     border-radius: 4px;
     font-size: 0.75rem;
-    display: none;
 }
-.map-btn.visible { display: block; }
-.optin-overlay {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    z-index: 5;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.5);
-    transition: opacity 0.3s ease;
-}
-.optin-overlay.hidden { display: none; }
-.optin-btn {
-    background: #4ade80;
-    color: #111;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 0.85rem;
-}
-.optin-btn:hover { background: #22c55e; }
 .cluster-label {
     color: #fff;
     font-size: 11px;

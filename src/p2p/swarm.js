@@ -98,7 +98,7 @@ class SwarmManager {
 			const loc = this.locationManager
 				? this.locationManager.getLocation()
 				: null;
-			this.peerManager.addOrUpdatePeer(this.identity.id, seq, null, loc);
+			this.peerManager.addOrUpdatePeer(this.identity.id, seq, loc);
 
 			const sig = signMessage(`seq:${seq}`, this.identity.privateKey);
 			const heartbeat =

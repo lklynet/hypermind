@@ -18,8 +18,8 @@ const main = async () => {
   const sseManager = new SSEManager();
   const locationManager = new LocationManager();
 
-  // Initialize location (async, non-blocking)
-  locationManager.init();
+  // Initialize location before adding self to peer list
+  await locationManager.init();
 
   peerManager.addOrUpdatePeer(identity.id, peerManager.getSeq(), locationManager.getLocation());
 
@@ -32,7 +32,6 @@ const main = async () => {
       id: identity.id,
       diagnostics: diagnostics.getStats(),
       locations,
-      optedIn: locationManager.isOptedIn(),
     }, force);
   };
 

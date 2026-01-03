@@ -3,7 +3,6 @@ const directEl = document.getElementById("direct");
 const canvas = document.getElementById("network");
 const ctx = canvas.getContext("2d");
 let particles = [];
-let locationOptedIn = window.HYPERMIND_OPTED_IN || false;
 
 function resize() {
 	canvas.width = window.innerWidth;
@@ -314,19 +313,7 @@ map.on("load", () => {
 	});
 });
 
-async function optIn() {
-	const res = await fetch("/api/location-optin", { method: "POST" });
-	if (res.ok) {
-		locationOptedIn = true;
-		document.getElementById("map").classList.add("opted-in");
-		document.getElementById("optinOverlay").classList.add("hidden");
-		document.getElementById("fullscreenBtn").classList.add("visible");
-		map.resize();
-	}
-}
-
 function toggleFullscreen() {
-	if (!locationOptedIn) return;
 	const container = document.getElementById("mapContainer");
 	const btn = document.getElementById("fullscreenBtn");
 	container.classList.toggle("fullscreen");
@@ -419,14 +406,6 @@ evtSource.onmessage = (event) => {
 		);
 		document.getElementById("diag-leave").innerText =
 			d.leaveMessages.toLocaleString();
-	}
-
-	// Auto-reveal map if server already opted in
-	if (data.optedIn && !locationOptedIn) {
-		locationOptedIn = true;
-		document.getElementById("map").classList.add("opted-in");
-		document.getElementById("optinOverlay").classList.add("hidden");
-		document.getElementById("fullscreenBtn").classList.add("visible");
 	}
 
 	// Update map locations

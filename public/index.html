@@ -78,18 +78,12 @@
                 <path d="M18 6L6 18M6 6l12 12"/>
             </svg>
         </button>
-        <div id="map" class="{{OPTED_IN_CLASS}}"></div>
-        <div class="optin-overlay{{OVERLAY_HIDDEN}}" id="optinOverlay">
-            <button class="optin-btn" onclick="optIn()">Enable Map</button>
-        </div>
+        <div id="map"></div>
         <div class="map-controls">
-            <button class="map-btn{{BTN_VISIBLE}}" id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
+            <button class="map-btn visible" id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
         </div>
     </div>
 
-    <script>
-        window.HYPERMIND_OPTED_IN = {{OPTED_IN}};
-    </script>
     <script src="/app.js"></script>
 </body>
 </html>

@@ -1,23 +1,14 @@
-const fs = require("fs");
-const path = require("path");
-
 // Lazy-loaded
 let iploc = null;
 
-const OPTIN_FILE = path.join(__dirname, "../../.location-optin");
-
 class LocationManager {
 	constructor() {
-		// Environment variable takes precedence (useful for Docker/k8s deployments)
-		const envOptIn = process.env.LOCATION_OPTIN === "true";
-		this.optedIn = envOptIn || fs.existsSync(OPTIN_FILE);
 		this.location = null;
 		this.initialized = false;
 	}
 
 	async init() {
 		if (this.initialized) return;
-		this.initialized = true;
 
 		try {
 			// Lazy load ip-location-api only when needed
@@ -39,47 +30,22 @@ class LocationManager {
 			} else {
 				console.log("[Geo] Could not determine location from IP");
 			}
+			this.initialized = true;
 		} catch (e) {
 			console.log("[Geo] Location lookup failed:", e.message);
 			this.location = null;
 		}
 	}
 
-	async optIn() {
-		this.optedIn = true;
-
-		// Persist opt-in to file
-		try {
-			fs.writeFileSync(OPTIN_FILE, "");
-		} catch (e) {
-			// Ignore write errors
-		}
-
-		// If location not ready yet, try to fetch it now
-		if (!this.location) {
-			await this.init();
-		}
-
-		return {
-			success: true,
-			location: this.location,
-			hasLocation: !!this.location,
-		};
-	}
-
 	getLocation() {
-		return this.optedIn ? this.location : null;
-	}
-
-	isOptedIn() {
-		return this.optedIn;
+		return this.location;
 	}
 
 	// Generate GeoJSON FeatureCollection of peer locations, aggregated by city
 	getPeerLocations(seenPeers, selfId) {
 		const cityGroups = new Map();
 
-		for (const [id, data] of seenPeers) {
+		for (const [id, data] of seenPeers.entries()) {
 			if (data.loc && data.loc.lat != null && data.loc.lon != null) {
 				const cityKey = data.loc.city || "Unknown";
 				if (!cityGroups.has(cityKey)) {

@@ -2,4 +2,3 @@ node_modules
 data
 .DS_Store
 .env
-.location-optin
