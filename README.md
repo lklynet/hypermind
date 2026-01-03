@@ -123,12 +123,15 @@ Add this to your `services.yaml`:
 
 ```
 
+To get the icon to work, you have to add the icon to `/app/public/icons`. If you have homepage running in a docker you mount an extra volume in your compose file. 
+See detailed [instructions](https://gethomepage.dev/configs/services/#icons). 
+
 ## » Environment Variables
 
 | Variable | Default | Description |
 | --- | --- | --- |
 | `PORT` | `3000` | The port the web dashboard listens on. Since `--network host` is used, this port opens directly on the host. |
-| `MAX_PEERS` | `10000` | Maximum number of peers to track in the swarm. Unless you're expecting the entire internet to join, the default is probably fine. |
+| `MAX_PEERS` | `1000000` | Maximum number of peers to track in the swarm. Unless you're expecting the entire internet to join, the default is probably fine. |
 | `LOCATION_OPTIN` | `false` | Set to `true` to enable peer location map without requiring UI opt-in. Useful for headless deployments. |
 
 ## » Usage
@@ -182,3 +185,13 @@ A: No. It has the short-term working memory of a honeybee (approx. 2.5 seconds).
 
 **Q: Why did you make this?**
 A: The homelab must grow. ¯\\_(ツ)_/¯
+
+## » Star History!!
+
+<a href="https://star-history.com/#lklynet/hypermind&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=lklynet/hypermind&type=timeline&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=lklynet/hypermind&type=timeline" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=lklynet/hypermind&type=timeline" />
+ </picture>
+</a>

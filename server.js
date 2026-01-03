@@ -21,12 +21,13 @@ const main = async () => {
   // Initialize location (async, non-blocking)
   locationManager.init();
 
-  peerManager.addOrUpdatePeer(identity.id, peerManager.getSeq(), null, locationManager.getLocation());
+  peerManager.addOrUpdatePeer(identity.id, peerManager.getSeq(), locationManager.getLocation());
 
   const broadcastUpdate = (force = false) => {
     const locations = locationManager.getPeerLocations(peerManager.getSeenPeers(), identity.id);
     sseManager.broadcastUpdate({
       count: peerManager.size,
+      totalUnique: peerManager.totalUniquePeers,
       direct: swarmManager.getSwarm().connections.size,
       id: identity.id,
       diagnostics: diagnostics.getStats(),
