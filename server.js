@@ -11,6 +11,7 @@ const { createServer, startServer } = require("./src/web/server");
 const { DIAGNOSTICS_INTERVAL } = require("./src/config/constants");
 
 const main = async () => {
+  const startTime = Date.now();
   const identity = generateIdentity();
   const peerManager = new PeerManager();
   const diagnostics = new DiagnosticsManager();
@@ -55,7 +56,7 @@ const main = async () => {
     broadcastUpdate();
   }, DIAGNOSTICS_INTERVAL);
 
-  const app = createServer(identity, peerManager, swarmManager, sseManager, diagnostics);
+  const app = createServer(identity, peerManager, swarmManager, sseManager, diagnostics, startTime);
   startServer(app, identity);
 
   const handleShutdown = () => {

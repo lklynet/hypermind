@@ -1,13 +1,14 @@
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
+const { generateMetrics } = require("./metrics");
 
 const HTML_TEMPLATE = fs.readFileSync(
     path.join(__dirname, "../../public/index.html"),
     "utf-8"
 );
 
-const setupRoutes = (app, identity, peerManager, swarm, sseManager, diagnostics) => {
+const setupRoutes = (app, identity, peerManager, swarm, sseManager, diagnostics, startTime) => {
     app.get("/", (req, res) => {
         const count = peerManager.size;
         const directPeers = swarm.getSwarm().connections.size;
@@ -50,6 +51,11 @@ const setupRoutes = (app, identity, peerManager, swarm, sseManager, diagnostics)
             id: identity.id,
             diagnostics: diagnostics.getStats(),
         });
+    });
+
+    app.get("/metrics", (req, res) => {
+        res.setHeader("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
+        res.send(generateMetrics(peerManager, swarm, diagnostics, startTime));
     });
 
     app.use(express.static(path.join(__dirname, "../../public")));
