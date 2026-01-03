@@ -85,3 +85,10 @@ a { color: #4b5563; text-decoration: none; border-bottom: 1px dotted #4b5563; }
     color: #333;
     margin-top: 1rem;
 }
+.ram-stats {
+    font-size: 1.8rem;
+    color: #4ade80ff;
+    margin-top: 2rem;
+    font-weight: 750;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+}

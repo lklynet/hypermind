@@ -1,5 +1,6 @@
 const countEl = document.getElementById('count');
 const directEl = document.getElementById('direct');
+const totalRAMEl = document.getElementById('totalRAM');
 const canvas = document.getElementById('network');
 const ctx = canvas.getContext('2d');
 let particles = [];
@@ -114,6 +115,12 @@ evtSource.onmessage = (event) => {
     }
 
     directEl.innerText = data.direct;
+
+    if (data.totalRAM !== undefined) {
+        const ramGB = Math.round(data.totalRAM / (1024 * 1024 * 1024));
+        const ramDollars = Math.round(ramGB * 12.5);
+        totalRAMEl.innerText = `${ramGB}GB = $${ramDollars.toLocaleString()}`;
+    }
 
     if (data.diagnostics) {
         const d = data.diagnostics;

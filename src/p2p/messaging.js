@@ -26,7 +26,7 @@ class MessageHandler {
 
     handleHeartbeat(msg, sourceSocket) {
         this.diagnostics.increment("heartbeatsReceived");
-        const { id, seq, hops, nonce, sig } = msg;
+        const { id, seq, hops, nonce, sig, availableRAM } = msg;
 
         if (!verifyPoW(id, nonce)) {
             this.diagnostics.increment("invalidPoW");
@@ -59,7 +59,7 @@ class MessageHandler {
                 sourceSocket.peerId = id;
             }
 
-            const wasNew = this.peerManager.addOrUpdatePeer(id, seq, key);
+            const wasNew = this.peerManager.addOrUpdatePeer(id, seq, key, availableRAM || 0);
 
             if (wasNew) {
                 this.diagnostics.increment("newPeersAdded");
