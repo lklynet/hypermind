@@ -116,15 +116,15 @@ const validateMessage = (msg) => {
         const allowedFields = ['type', 'id', 'seq', 'hops', 'nonce', 'sig'];
         const fields = Object.keys(msg);
         return fields.every(f => allowedFields.includes(f)) &&
-            msg.id && typeof msg.seq === 'number' &&
-            typeof msg.hops === 'number' && msg.nonce && msg.sig;
+            msg.id && typeof msg.id === 'string' && typeof msg.seq === 'number' &&
+            typeof msg.hops === 'number' && msg.hops >= 0 && msg.nonce && msg.sig;
     }
 
     if (msg.type === "LEAVE") {
         const allowedFields = ['type', 'id', 'hops', 'sig'];
         const fields = Object.keys(msg);
         return fields.every(f => allowedFields.includes(f)) &&
-            msg.id && typeof msg.hops === 'number' && msg.sig;
+            msg.id && typeof msg.id === 'string' && typeof msg.hops === 'number' && msg.sig;
     }
 
     return false;
