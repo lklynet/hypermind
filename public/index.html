@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hypermind</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/style.css">
+    <link href="https://unpkg.com/maplibre-gl@5.0.0/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@5.0.0/dist/maplibre-gl.js"></script>
+</head>
+<body>
+    <canvas id="network"></canvas>
+    <div class="container">
+        <div id="count" class="count" data-initial-count="{{COUNT}}">{{COUNT}}</div>
+        <div class="label">Active Nodes</div>
+        <div class="map-container" id="mapContainer">
+            <div id="map" class="{{OPTED_IN_CLASS}}"></div>
+            <div class="optin-overlay{{OVERLAY_HIDDEN}}" id="optinOverlay">
+                <button class="optin-btn" onclick="optIn()">Enable Map</button>
+            </div>
+            <div class="map-controls">
+                <button class="map-btn{{BTN_VISIBLE}}" id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
+            </div>
+        </div>
+        <div class="footer">
+            powered by <a href="https://github.com/lklynet/hypermind" target="_blank">hypermind</a>
+        </div>
+        <div class="debug">
+            ID: {{ID}}<br>
+            Direct Connections: <span id="direct">{{DIRECT}}</span><br>
+            <span class="debug-link" onclick="openDiagnostics()">diagnostics</span>
+        </div>
+    </div>
+
+    <div id="diagnosticsModal" class="modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeDiagnostics()">×</button>
+            <div class="modal-title">Diagnostics</div>
+            <div class="stat-row">
+                <span class="stat-label">Heartbeats Received</span>
+                <span class="stat-value" id="diag-heartbeats-rx">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Heartbeats Relayed</span>
+                <span class="stat-value" id="diag-heartbeats-tx">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">New Peers Added</span>
+                <span class="stat-value" id="diag-new-peers">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Duplicate/Old Seq</span>
+                <span class="stat-value" id="diag-dup-seq">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Invalid PoW</span>
+                <span class="stat-value" id="diag-invalid-pow">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Invalid Signatures</span>
+                <span class="stat-value" id="diag-invalid-sig">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Bandwidth In</span>
+                <span class="stat-value" id="diag-bandwidth-in">0 KB</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Bandwidth Out</span>
+                <span class="stat-value" id="diag-bandwidth-out">0 KB</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">LEAVE Messages</span>
+                <span class="stat-value" id="diag-leave">0</span>
+            </div>
+            <div class="update-time" id="last-update">last 10 seconds</div>
+        </div>
+    </div>
+
+    <script>
+        window.HYPERMIND_OPTED_IN = {{OPTED_IN}};
+    </script>
+    <script src="/app.js"></script>
+</body>
+</html>

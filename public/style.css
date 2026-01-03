@@ -1,0 +1,165 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: #111;
+    color: #eee;
+    margin: 0;
+}
+
+.container { text-align: center; position: relative; z-index: 10; }
+#network { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+.count { font-size: 8rem; font-weight: bold; color: #4ade80; transition: color 0.2s; visibility: hidden; }
+.count.loaded { visibility: visible; }
+.label { font-size: 1.5rem; color: #9ca3af; margin-top: 1rem; }
+.footer { margin-top: 2rem; font-size: 0.9rem; color: #4b5563; }
+.debug { font-size: 0.8rem; color: #4b5563; margin-top: 1rem; }
+.debug-link { color: #4b5563; border-bottom: 1px dotted #4b5563; cursor: pointer; }
+.debug-link:hover { color: #9ca3af; }
+a { color: #4b5563; text-decoration: none; border-bottom: 1px dotted #4b5563; }
+
+.pulse { animation: pulse 0.5s ease-in-out; }
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); color: #fff; }
+    100% { transform: scale(1); }
+}
+
+/* Map styles */
+.map-container {
+    position: relative;
+    width: 900px;
+    max-width: 90vw;
+    height: 400px;
+    margin: 1.5rem auto;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #333;
+    transition: all 0.3s ease;
+}
+.map-container.fullscreen {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    max-width: 100vw;
+    z-index: 100;
+    border-radius: 0;
+    border: none;
+    margin: 0;
+}
+#map {
+    width: 100%;
+    height: 100%;
+    filter: blur(10px);
+    transition: filter 0.5s ease;
+}
+#map.opted-in { filter: none; }
+.map-controls {
+    position: absolute;
+    top: 8px; right: 8px;
+    z-index: 10;
+    display: flex;
+    gap: 4px;
+}
+.map-btn {
+    background: rgba(17, 17, 17, 0.8);
+    border: 1px solid #4ade80;
+    color: #4ade80;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    display: none;
+}
+.map-btn.visible { display: block; }
+.optin-overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+}
+.optin-overlay.hidden { display: none; }
+.optin-btn {
+    background: #4ade80;
+    color: #111;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.85rem;
+}
+.optin-btn:hover { background: #22c55e; }
+.cluster-label {
+    color: #fff;
+    font-size: 11px;
+    font-weight: bold;
+    text-shadow: 0 0 4px rgba(0,0,0,0.8);
+    pointer-events: none;
+}
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+}
+.modal.active { display: flex; align-items: center; justify-content: center; }
+.modal-content {
+    background: #111;
+    border: 1px solid #222;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    position: relative;
+}
+.modal-title {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 1.5rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.close-btn {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    background: none;
+    border: none;
+    color: #333;
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+.close-btn:hover { color: #666; }
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #1a1a1a;
+    font-size: 0.85rem;
+}
+.stat-row:last-child { border-bottom: none; }
+.stat-label { color: #4b5563; }
+.stat-value {
+    color: #9ca3af;
+    font-variant-numeric: tabular-nums;
+}
+.update-time {
+    text-align: center;
+    font-size: 0.7rem;
+    color: #333;
+    margin-top: 1rem;
+}
