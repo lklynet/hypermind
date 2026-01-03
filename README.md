@@ -128,12 +128,15 @@ Add this to your `services.yaml`:
 
 ```
 
+To get the icon to work, you have to add the icon to `/app/public/icons`. If you have homepage running in a docker you mount an extra volume in your compose file. 
+See detailed [instructions](https://gethomepage.dev/configs/services/#icons). 
+
 ## » Environment Variables
 
 | Variable | Default | Description |
 | --- | --- | --- |
 | `PORT` | `3000` | The port the web dashboard listens on. Since `--network host` is used, this port opens directly on the host. |
-| `MAX_PEERS` | `10000` | Maximum number of peers to track in the swarm. Unless you're expecting the entire internet to join, the default is probably fine. |
+| `MAX_PEERS` | `1000000` | Maximum number of peers to track in the swarm. Unless you're expecting the entire internet to join, the default is probably fine. |
 | `ENABLE_IPV4_SCAN` | `false` | Enable IPv4 address space scanning for peer discovery. Disabled by default. Set to `true` to scan the entire IPv4 Network for Hypermind nodes. Most users should leave this disabled and rely on DHT discovery. |
 | `SCAN_PORT` | `3000` | The port to scan on remote IPv4 addresses when IPv4 scanning is enabled. This should match the port other nodes are listening on. |
 | `BOOTSTRAP_TIMEOUT` | `10000` | Time in milliseconds to spend scanning the IPv4 address space before giving up and using DHT discovery. Only used if ENABLE_IPV4_SCAN is true. Set to 0 to skip scanning and go straight to DHT. |

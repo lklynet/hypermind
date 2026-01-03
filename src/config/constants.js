@@ -13,7 +13,7 @@ const TOPIC = crypto.createHash("sha256").update(TOPIC_NAME).digest();
  */
 const POW_PREFIX = "0000";
 
-const MAX_PEERS = parseInt(process.env.MAX_PEERS) || 10000;
+const MAX_PEERS = parseInt(process.env.MAX_PEERS) || 1000000;
 const MAX_MESSAGE_SIZE = 2048;
 const MAX_RELAY_HOPS = 2;
 const MAX_CONNECTIONS = 32;

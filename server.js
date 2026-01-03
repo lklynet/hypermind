@@ -18,11 +18,12 @@ const main = async () => {
   const diagnostics = new DiagnosticsManager();
   const sseManager = new SSEManager();
 
-  peerManager.addOrUpdatePeer(identity.id, peerManager.getSeq(), null);
+  peerManager.addOrUpdatePeer(identity.id, peerManager.getSeq());
 
   const broadcastUpdate = () => {
     sseManager.broadcastUpdate({
       count: peerManager.size,
+      totalUnique: peerManager.totalUniquePeers,
       direct: swarmManager.getSwarm().connections.size,
       id: identity.id,
       diagnostics: diagnostics.getStats(),
