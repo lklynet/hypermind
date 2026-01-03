@@ -1,15 +1,18 @@
 const { verifyPoW, verifySignature, createPublicKey } = require("../core/security");
-const { MAX_RELAY_HOPS } = require("../config/constants");
+const { MAX_RELAY_HOPS, ENABLE_CHAT } = require("../config/constants");
 const { BloomFilterManager } = require("../state/bloom");
 
 class MessageHandler {
-    constructor(peerManager, diagnostics, relayCallback, broadcastCallback) {
+    constructor(peerManager, diagnostics, relayCallback, broadcastCallback, chatCallback, chatSystemFn) {
         this.peerManager = peerManager;
         this.diagnostics = diagnostics;
         this.relayCallback = relayCallback;
         this.broadcastCallback = broadcastCallback;
+        this.chatCallback = chatCallback;
+        this.chatSystemFn = chatSystemFn;
         this.bloomFilter = new BloomFilterManager();
         this.bloomFilter.start();
+        this.chatRateLimits = new Map();
     }
 
     handleMessage(msg, sourceSocket) {
@@ -21,6 +24,8 @@ class MessageHandler {
             this.handleHeartbeat(msg, sourceSocket);
         } else if (msg.type === "LEAVE") {
             this.handleLeave(msg, sourceSocket);
+        } else if (msg.type === "CHAT") {
+            this.handleChat(msg, sourceSocket);
         }
     }
 
@@ -57,11 +62,26 @@ class MessageHandler {
                 sourceSocket.peerId = id;
             }
 
-            const wasNew = this.peerManager.addOrUpdatePeer(id, seq);
+            const getIp = (sock) => {
+                if (sock.remoteAddress) return sock.remoteAddress;
+                if (sock.rawStream && sock.rawStream.remoteHost) return sock.rawStream.remoteHost;
+                if (sock.rawStream && sock.rawStream.remoteAddress) return sock.rawStream.remoteAddress;
+                return null;
+            };
+
+            const ip = (hops === 0) ? getIp(sourceSocket) : null;
+            const wasNew = this.peerManager.addOrUpdatePeer(id, seq, key, ip);
 
             if (wasNew) {
                 this.diagnostics.increment("newPeersAdded");
                 this.broadcastCallback();
+                if (ENABLE_CHAT && this.chatSystemFn && hops === 0) {
+                    this.chatSystemFn({
+                        type: "SYSTEM",
+                        content: `Connection established with Node ...${id.slice(-8)}`,
+                        timestamp: Date.now()
+                    });
+                }
             }
 
             // Only relay if we haven't already relayed this message (bloom filter check)
@@ -96,11 +116,46 @@ class MessageHandler {
             this.peerManager.removePeer(id);
             this.broadcastCallback();
 
+            if (ENABLE_CHAT && this.chatSystemFn && hops === 0) {
+                this.chatSystemFn({
+                    type: "SYSTEM",
+                    content: `Node ...${id.slice(-8)} disconnected.`,
+                    timestamp: Date.now()
+                });
+            }
+
             // Use id:leave as key for LEAVE messages
             if (hops < MAX_RELAY_HOPS && !this.bloomFilter.hasRelayed(id, "leave")) {
                 this.bloomFilter.markRelayed(id, "leave");
                 this.relayCallback({ ...msg, hops: hops + 1 }, sourceSocket);
             }
+        }
+    }
+
+    handleChat(msg, sourceSocket) {
+        // Identity Verification: Ensure the sender matches the authenticated socket
+        if (!sourceSocket.peerId || sourceSocket.peerId !== msg.sender) {
+            return;
+        }
+
+        // Rate Limiting: Prevent flooding (5 messages per 10 seconds per peer)
+        const now = Date.now();
+        let rateData = this.chatRateLimits.get(msg.sender);
+        
+        if (!rateData || now - rateData.windowStart > 10000) {
+            // Reset window
+            rateData = { count: 0, windowStart: now };
+        }
+
+        if (rateData.count >= 5) {
+            return; // Drop message
+        }
+
+        rateData.count++;
+        this.chatRateLimits.set(msg.sender, rateData);
+
+        if (this.chatCallback) {
+            this.chatCallback(msg);
         }
     }
 }
@@ -125,6 +180,15 @@ const validateMessage = (msg) => {
         const fields = Object.keys(msg);
         return fields.every(f => allowedFields.includes(f)) &&
             msg.id && typeof msg.hops === 'number' && msg.sig;
+    }
+
+    if (msg.type === "CHAT") {
+        const allowedFields = ['type', 'sender', 'content', 'timestamp'];
+        const fields = Object.keys(msg);
+        return fields.every(f => allowedFields.includes(f)) &&
+            msg.sender && 
+            msg.content && typeof msg.content === 'string' && msg.content.length <= 140 &&
+            typeof msg.timestamp === 'number';
     }
 
     return false;

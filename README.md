@@ -126,6 +126,22 @@ See detailed [instructions](https://gethomepage.dev/configs/services/#icons).
 | --- | --- | --- |
 | `PORT` | `3000` | The port the web dashboard listens on. Since `--network host` is used, this port opens directly on the host. |
 | `MAX_PEERS` | `1000000` | Maximum number of peers to track in the swarm. Unless you're expecting the entire internet to join, the default is probably fine. |
+| `ENABLE_CHAT` | `false` | Set to `true` to enable the ephemeral P2P chat terminal. |
+
+## » Features
+
+### 1. The Counter
+It counts. That's the main thing.
+
+### 2. Ephemeral Chat
+**New:** A completely decentralized, ephemeral chat system built directly on top of the swarm topology.
+
+* **Ephemeral:** No database. No history. If you refresh, it's gone.
+* **Restricted:** You can only talk to your ~32 direct connections.
+* **Chaotic:** Every 30 seconds, the network rotates your connections. You might be mid-sentence and—*poof*—your audience changes.
+* **Anonymous:** You are identified only by the last 4 characters of your node ID.
+
+To enable this feature, set `ENABLE_CHAT=true`.
 
 ## » Usage
 

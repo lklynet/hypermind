@@ -8,7 +8,7 @@ const { relayMessage } = require("./src/p2p/relay");
 const { SwarmManager } = require("./src/p2p/swarm");
 const { SSEManager } = require("./src/web/sse");
 const { createServer, startServer } = require("./src/web/server");
-const { DIAGNOSTICS_INTERVAL } = require("./src/config/constants");
+const { DIAGNOSTICS_INTERVAL, ENABLE_CHAT } = require("./src/config/constants");
 
 const main = async () => {
   const identity = generateIdentity();
@@ -25,14 +25,26 @@ const main = async () => {
       direct: swarmManager.getSwarm().connections.size,
       id: identity.id,
       diagnostics: diagnostics.getStats(),
+      chatEnabled: ENABLE_CHAT,
+      peers: peerManager.getPeersWithIps()
     });
+  };
+
+  const chatCallback = (msg) => {
+    sseManager.broadcast(msg);
+  };
+
+  const chatSystemFn = (msg) => {
+    sseManager.broadcast(msg);
   };
 
   const messageHandler = new MessageHandler(
     peerManager,
     diagnostics,
     (msg, sourceSocket) => relayMessage(msg, sourceSocket, swarmManager.getSwarm(), diagnostics),
-    broadcastUpdate
+    broadcastUpdate,
+    chatCallback,
+    chatSystemFn
   );
 
   const swarmManager = new SwarmManager(
@@ -41,7 +53,8 @@ const main = async () => {
     diagnostics,
     messageHandler,
     (msg, sourceSocket) => relayMessage(msg, sourceSocket, swarmManager.getSwarm(), diagnostics),
-    broadcastUpdate
+    broadcastUpdate,
+    chatSystemFn
   );
 
   await swarmManager.start();

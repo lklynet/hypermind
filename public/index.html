@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="/favicon.ico">
     <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
     <canvas id="network"></canvas>
@@ -17,7 +19,15 @@
         <div class="debug">
             ID: {{ID}}<br>
             Direct Connections: <span id="direct">{{DIRECT}}</span><br>
-            <span class="debug-link" onclick="openDiagnostics()">diagnostics</span>
+            <span class="debug-link" onclick="openDiagnostics()">diagnostics</span> | 
+            <span class="debug-link" onclick="openMap()">map</span>
+        </div>
+    </div>
+
+    <div id="mapModal" class="modal">
+        <div class="modal-content map-content">
+            <button class="close-btn" onclick="closeMap()">×</button>
+            <div id="map"></div>
         </div>
     </div>
 
@@ -65,6 +75,14 @@
         </div>
     </div>
 
+    <div id="terminal" class="terminal hidden">
+        <button id="terminal-toggle" class="terminal-toggle" title="Toggle Chat">▼</button>
+        <div id="terminal-output" class="terminal-output"></div>
+        <div class="terminal-input-line">
+            <span class="prompt">&gt;</span>
+            <input type="text" id="terminal-input" maxlength="140" placeholder="Broadcast to direct peers..." autocomplete="off">
+        </div>
+    </div>
 
     <script src="/app.js"></script>
 </body>

@@ -9,7 +9,7 @@ class PeerManager {
         this.mySeq = 0;
     }
 
-    addOrUpdatePeer(id, seq) {
+    addOrUpdatePeer(id, seq, key, ip = null) {
         const stored = this.seenPeers.get(id);
         const wasNew = !stored;
 
@@ -19,6 +19,8 @@ class PeerManager {
         this.seenPeers.set(id, {
             seq,
             lastSeen: Date.now(),
+            key,
+            ip: ip || (stored ? stored.ip : null),
         });
 
         return wasNew;
@@ -69,6 +71,16 @@ class PeerManager {
 
     getSeq() {
         return this.mySeq;
+    }
+
+    getPeersWithIps() {
+        const peers = [];
+        for (const [id, data] of this.seenPeers.entries()) {
+            if (data.ip) {
+                peers.push({ id, ip: data.ip });
+            }
+        }
+        return peers;
     }
 }
 

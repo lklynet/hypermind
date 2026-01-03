@@ -1,15 +1,16 @@
 const Hyperswarm = require("hyperswarm");
 const { signMessage } = require("../core/security");
-const { TOPIC, TOPIC_NAME, HEARTBEAT_INTERVAL, MAX_CONNECTIONS, CONNECTION_ROTATION_INTERVAL } = require("../config/constants");
+const { TOPIC, TOPIC_NAME, HEARTBEAT_INTERVAL, MAX_CONNECTIONS, CONNECTION_ROTATION_INTERVAL, ENABLE_CHAT } = require("../config/constants");
 
 class SwarmManager {
-    constructor(identity, peerManager, diagnostics, messageHandler, relayFn, broadcastFn) {
+    constructor(identity, peerManager, diagnostics, messageHandler, relayFn, broadcastFn, chatSystemFn) {
         this.identity = identity;
         this.peerManager = peerManager;
         this.diagnostics = diagnostics;
         this.messageHandler = messageHandler;
         this.relayFn = relayFn;
         this.broadcastFn = broadcastFn;
+        this.chatSystemFn = chatSystemFn;
 
         this.swarm = new Hyperswarm();
         this.heartbeatInterval = null;
@@ -109,6 +110,13 @@ class SwarmManager {
             }
 
             if (oldest) {
+                if (ENABLE_CHAT && this.chatSystemFn && oldest.peerId) {
+                    this.chatSystemFn({
+                        type: "SYSTEM",
+                        content: `Connection with Node ...${oldest.peerId.slice(-8)} severed (Rotation).`,
+                        timestamp: Date.now()
+                    });
+                }
                 oldest.destroy();
             }
         }, CONNECTION_ROTATION_INTERVAL);
@@ -142,6 +150,14 @@ class SwarmManager {
 
     getSwarm() {
         return this.swarm;
+    }
+
+    broadcastChat(msg) {
+        if (!ENABLE_CHAT) return;
+        const msgStr = JSON.stringify(msg) + "\n";
+        for (const socket of this.swarm.connections) {
+            socket.write(msgStr);
+        }
     }
 }
 

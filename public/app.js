@@ -96,6 +96,275 @@ document.getElementById('diagnosticsModal').addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         closeDiagnostics();
+        closeMap();
+    }
+});
+
+// Map Logic
+let map = null;
+let mapInitialized = false;
+let peerMarkers = {}; // id -> marker
+let ipCache = {}; // ip -> { lat, lon }
+let lastPeerData = [];
+let myLocation = null;
+
+const fetchMyLocation = async () => {
+    if (myLocation) return;
+    try {
+        const res = await fetch('https://ipwho.is/');
+        const data = await res.json();
+        if (data.success) {
+            myLocation = { lat: data.latitude, lon: data.longitude, city: data.city, country: data.country };
+            updateMap(lastPeerData);
+        }
+    } catch (e) {
+        console.error('My location fetch failed', e);
+    }
+}
+
+const openMap = () => {
+    document.getElementById('mapModal').classList.add('active');
+    if (!mapInitialized) {
+        initMap();
+    } else {
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 100);
+    }
+    
+    fetchMyLocation();
+
+    if (lastPeerData.length > 0) {
+        updateMap(lastPeerData);
+    }
+}
+
+const closeMap = () => {
+    document.getElementById('mapModal').classList.remove('active');
+}
+
+document.getElementById('mapModal').addEventListener('click', (e) => {
+    if (e.target.id === 'mapModal') {
+        closeMap();
+    }
+});
+
+const initMap = () => {
+    if (mapInitialized) return;
+    
+    map = L.map('map').setView([20, 0], 2);
+    
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19
+    }).addTo(map);
+    
+    mapInitialized = true;
+    
+    setTimeout(() => {
+        map.invalidateSize();
+    }, 100);
+}
+
+const fetchLocation = async (ip) => {
+    if (ipCache[ip]) return ipCache[ip];
+    
+    // Skip local IPs
+    if (ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.16.')) {
+        return null;
+    }
+
+    try {
+        const res = await fetch(`https://ipwho.is/${ip}`);
+        const data = await res.json();
+        if (data.success) {
+            const loc = { lat: data.latitude, lon: data.longitude, city: data.city, country: data.country };
+            ipCache[ip] = loc;
+            return loc;
+        }
+    } catch (e) {
+        console.error('Geo fetch failed', e);
+    }
+    return null;
+}
+
+const updateMap = async (peers) => {
+    if (!mapInitialized) return;
+    if (!peers) peers = [];
+    
+    const currentIds = new Set(peers.map(p => p.id));
+    
+    // Remove old markers
+    for (const id in peerMarkers) {
+        if (id !== 'me' && !currentIds.has(id)) {
+            map.removeLayer(peerMarkers[id]);
+            delete peerMarkers[id];
+        }
+    }
+    
+    // Add/Update markers
+    for (const peer of peers) {
+        if (!peer.ip) continue;
+        
+        if (!peerMarkers[peer.id]) {
+            const loc = await fetchLocation(peer.ip);
+            if (loc) {
+                const marker = L.circleMarker([loc.lat, loc.lon], {
+                    radius: 10,
+                    fillColor: "#4ade80",
+                    color: "transparent",
+                    weight: 0,
+                    opacity: 0,
+                    fillOpacity: 0.15
+                }).addTo(map);
+                
+                marker.bindPopup(`<b>Node</b> ${peer.id.slice(-8)}<br>${loc.city}, ${loc.country}`);
+                peerMarkers[peer.id] = marker;
+            }
+        }
+    }
+
+    // Add My Location
+    if (myLocation && !peerMarkers['me']) {
+        const marker = L.circleMarker([myLocation.lat, myLocation.lon], {
+            radius: 6,
+            fillColor: "#ffffff",
+            color: "#4ade80",
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 1
+        }).addTo(map);
+        
+        marker.bindPopup(`<b>This Node</b><br>${myLocation.city}, ${myLocation.country}`);
+        peerMarkers['me'] = marker;
+    }
+}
+
+const terminal = document.getElementById('terminal');
+const terminalOutput = document.getElementById('terminal-output');
+const terminalInput = document.getElementById('terminal-input');
+const terminalToggle = document.getElementById('terminal-toggle');
+const promptEl = document.querySelector('.prompt');
+let myId = null;
+let myChatHistory = [];
+
+terminalToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleChat();
+});
+
+// Initialize chat state from localStorage
+const initChatState = () => {
+    const isCollapsed = localStorage.getItem('chatCollapsed') === 'true';
+    if (isCollapsed) {
+        terminal.classList.add('collapsed');
+        terminalToggle.innerText = '▲';
+        document.body.classList.remove('chat-active');
+        document.body.classList.add('chat-collapsed');
+    } else {
+        terminal.classList.remove('collapsed');
+        terminalToggle.innerText = '▼';
+        document.body.classList.add('chat-active');
+        document.body.classList.remove('chat-collapsed');
+    }
+};
+
+const toggleChat = () => {
+    terminal.classList.toggle('collapsed');
+    const isCollapsed = terminal.classList.contains('collapsed');
+    terminalToggle.innerText = isCollapsed ? '▲' : '▼';
+    
+    localStorage.setItem('chatCollapsed', isCollapsed);
+
+    if (isCollapsed) {
+        document.body.classList.remove('chat-active');
+        document.body.classList.add('chat-collapsed');
+    } else {
+        document.body.classList.add('chat-active');
+        document.body.classList.remove('chat-collapsed');
+        terminalOutput.scrollTop = terminalOutput.scrollHeight;
+    }
+}
+
+const updatePromptStatus = () => {
+    const now = Date.now();
+    myChatHistory = myChatHistory.filter(t => now - t < 10000);
+    
+    if (myChatHistory.length >= 5) {
+        promptEl.style.color = 'orange';
+    } else {
+        promptEl.style.color = '#4ade80';
+    }
+};
+
+setInterval(updatePromptStatus, 500);
+
+const getColorFromId = (id) => {
+    if (!id) return '#666';
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+        hash = id.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+    return '#' + "00000".substring(0, 6 - c.length) + c;
+}
+
+const appendMessage = (msg) => {
+    const div = document.createElement('div');
+    
+    if (msg.type === 'SYSTEM') {
+        div.className = 'msg-system';
+        div.innerText = `[SYSTEM] ${msg.content}`;
+    } else if (msg.type === 'CHAT') {
+        const senderColor = getColorFromId(msg.sender);
+        const senderName = msg.sender === myId ? 'You' : msg.sender.slice(-4);
+        
+        const senderSpan = document.createElement('span');
+        senderSpan.className = 'msg-sender';
+        senderSpan.style.color = senderColor;
+        senderSpan.innerText = `[${senderName}]`;
+        
+        const contentSpan = document.createElement('span');
+        contentSpan.className = 'msg-content';
+        contentSpan.innerText = ` > ${msg.content}`;
+        
+        div.appendChild(senderSpan);
+        div.appendChild(contentSpan);
+    }
+    
+    terminalOutput.appendChild(div);
+    terminalOutput.scrollTop = terminalOutput.scrollHeight;
+}
+
+terminalInput.addEventListener('keypress', async (e) => {
+    if (e.key === 'Enter') {
+        const content = terminalInput.value.trim();
+        if (!content) return;
+        
+        terminalInput.value = '';
+        
+        try {
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            });
+
+            if (res.ok) {
+                myChatHistory.push(Date.now());
+                updatePromptStatus();
+            } else if (res.status === 429) {
+                // Force update if we hit the limit unexpectedly
+                // Add a dummy timestamp to force the limit state if not already there
+                if (myChatHistory.length < 5) {
+                    myChatHistory.push(Date.now());
+                }
+                updatePromptStatus();
+            }
+        } catch (err) {
+            console.error('Failed to send message', err);
+        }
     }
 });
 
@@ -103,6 +372,34 @@ const evtSource = new EventSource("/events");
 
 evtSource.onmessage = (event) => {
     const data = JSON.parse(event.data);
+
+    if (data.type === 'CHAT' || data.type === 'SYSTEM') {
+        appendMessage(data);
+        return;
+    }
+
+    if (data.chatEnabled) {
+        terminal.classList.remove('hidden');
+        
+        // Only initialize state once when chat becomes enabled
+        if (!terminal.dataset.initialized) {
+            initChatState();
+            terminal.dataset.initialized = 'true';
+        }
+    } else {
+        terminal.classList.add('hidden');
+        document.body.classList.remove('chat-active');
+        document.body.classList.remove('chat-collapsed');
+    }
+    
+    if (data.id) myId = data.id;
+
+    if (data.peers) {
+        lastPeerData = data.peers;
+        if (mapInitialized && document.getElementById('mapModal').classList.contains('active')) {
+            updateMap(data.peers);
+        }
+    }
 
     updateParticles(data.count);
 

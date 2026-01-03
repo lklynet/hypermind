@@ -24,6 +24,8 @@ const PEER_TIMEOUT = 15000;
 const BROADCAST_THROTTLE = 1000;
 const DIAGNOSTICS_INTERVAL = 10000;
 const PORT = process.env.PORT || 3000;
+const ENABLE_CHAT = process.env.ENABLE_CHAT === 'true';
+const CHAT_RATE_LIMIT = 5000;
 
 module.exports = {
     TOPIC_NAME,
@@ -39,4 +41,6 @@ module.exports = {
     BROADCAST_THROTTLE,
     DIAGNOSTICS_INTERVAL,
     PORT,
+    ENABLE_CHAT,
+    CHAT_RATE_LIMIT,
 };

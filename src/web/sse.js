@@ -19,6 +19,10 @@ class SSEManager {
         if (now - this.lastBroadcast < BROADCAST_THROTTLE) return;
         this.lastBroadcast = now;
 
+        this.broadcast(data);
+    }
+
+    broadcast(data) {
         const message = JSON.stringify(data);
         for (const client of this.clients) {
             client.write(`data: ${message}\n\n`);
