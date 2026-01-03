@@ -1,0 +1,91 @@
+name: VirusTotal Scan
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  virustotal:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          load: true
+          tags: hypermind:scan
+
+      - name: Export Docker image
+        run: |
+          docker save hypermind:scan -o hypermind-image.tar
+          gzip hypermind-image.tar
+
+      - name: Upload to VirusTotal
+        id: virustotal
+        uses: crazy-max/ghaction-virustotal@v4
+        with:
+          vt_api_key: ${{ secrets.VT_API_KEY }}
+          files: |
+            hypermind-image.tar.gz
+
+      - name: Get analysis results
+        id: analysis
+        env:
+          VT_API_KEY: ${{ secrets.VT_API_KEY }}
+        run: |
+          ANALYSIS_URL="${{ steps.virustotal.outputs.analysis }}"
+          ANALYSIS_ID=$(echo "$ANALYSIS_URL" | grep -oP 'analyses/\K[^"]+' | head -1)
+
+          sleep 60
+
+          RESULT=$(curl -s --request GET \
+            --url "https://www.virustotal.com/api/v3/analyses/$ANALYSIS_ID" \
+            --header "x-apikey: $VT_API_KEY")
+
+          MALICIOUS=$(echo "$RESULT" | jq -r '.data.attributes.stats.malicious // 0')
+          TOTAL=$(echo "$RESULT" | jq -r '[.data.attributes.stats.malicious, .data.attributes.stats.undetected, .data.attributes.stats.harmless, .data.attributes.stats.suspicious] | add // 0')
+
+          if [ "$MALICIOUS" -eq 0 ]; then
+            COLOR="brightgreen"
+            MESSAGE="0/${TOTAL} detections"
+          else
+            COLOR="red"
+            MESSAGE="${MALICIOUS}/${TOTAL} detections"
+          fi
+
+          echo "malicious=$MALICIOUS" >> $GITHUB_OUTPUT
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "color=$COLOR" >> $GITHUB_OUTPUT
+          echo "message=$MESSAGE" >> $GITHUB_OUTPUT
+
+      - name: Update badge JSON
+        run: |
+          mkdir -p .github/badges
+          cat > .github/badges/virustotal.json << EOF
+          {
+            "schemaVersion": 1,
+            "label": "VirusTotal",
+            "message": "${{ steps.analysis.outputs.message }}",
+            "color": "${{ steps.analysis.outputs.color }}",
+            "namedLogo": "virustotal"
+          }
+          EOF
+
+      - name: Commit badge update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/badges/virustotal.json
+          git diff --staged --quiet || git commit -m "Update VirusTotal badge [skip ci]"
+          git push

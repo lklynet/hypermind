@@ -3,6 +3,8 @@
 <h1>Hypermind</h1>
 </div>
 
+[![VirusTotal](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/lklynet/hypermind/main/.github/badges/virustotal.json)](https://github.com/lklynet/hypermind/actions/workflows/virustotal.yml)
+
 ### The High-Availability Solution to a Problem That Doesn't Exist.
 
 **Hypermind** is a completely decentralized, Peer-to-Peer deployment counter.
