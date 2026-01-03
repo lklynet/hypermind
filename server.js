@@ -8,6 +8,7 @@ const { relayMessage } = require("./src/p2p/relay");
 const { SwarmManager } = require("./src/p2p/swarm");
 const { SSEManager } = require("./src/web/sse");
 const { createServer, startServer } = require("./src/web/server");
+const { LocationManager } = require("./src/geo/location");
 const { DIAGNOSTICS_INTERVAL } = require("./src/config/constants");
 
 const main = async () => {
@@ -15,16 +16,23 @@ const main = async () => {
   const peerManager = new PeerManager();
   const diagnostics = new DiagnosticsManager();
   const sseManager = new SSEManager();
+  const locationManager = new LocationManager();
 
-  peerManager.addOrUpdatePeer(identity.id, peerManager.getSeq(), null);
+  // Initialize location (async, non-blocking)
+  locationManager.init();
 
-  const broadcastUpdate = () => {
+  peerManager.addOrUpdatePeer(identity.id, peerManager.getSeq(), null, locationManager.getLocation());
+
+  const broadcastUpdate = (force = false) => {
+    const locations = locationManager.getPeerLocations(peerManager.getSeenPeers(), identity.id);
     sseManager.broadcastUpdate({
       count: peerManager.size,
       direct: swarmManager.getSwarm().connections.size,
       id: identity.id,
       diagnostics: diagnostics.getStats(),
-    });
+      locations,
+      optedIn: locationManager.isOptedIn(),
+    }, force);
   };
 
   const messageHandler = new MessageHandler(
@@ -40,7 +48,8 @@ const main = async () => {
     diagnostics,
     messageHandler,
     (msg, sourceSocket) => relayMessage(msg, sourceSocket, swarmManager.getSwarm(), diagnostics),
-    broadcastUpdate
+    broadcastUpdate,
+    locationManager
   );
 
   await swarmManager.start();
@@ -54,7 +63,7 @@ const main = async () => {
     broadcastUpdate();
   }, DIAGNOSTICS_INTERVAL);
 
-  const app = createServer(identity, peerManager, swarmManager, sseManager, diagnostics);
+  const app = createServer(identity, peerManager, swarmManager, sseManager, diagnostics, locationManager);
   startServer(app, identity);
 
   const handleShutdown = () => {

@@ -28,6 +28,7 @@
   "dependencies": {
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
-    "hyperswarm": "^4.16.0"
+    "hyperswarm": "^4.16.0",
+    "ip-location-api": "^4.0.4"
   }
 }

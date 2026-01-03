@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="/favicon.ico">
     <link rel="stylesheet" href="/style.css">
+    <link href="https://unpkg.com/maplibre-gl@5.0.0/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@5.0.0/dist/maplibre-gl.js"></script>
 </head>
 <body>
     <canvas id="network"></canvas>
@@ -65,7 +67,29 @@
         </div>
     </div>
 
+    <!-- Floating map panel - starts collapsed -->
+    <div class="map-container collapsed" id="mapContainer">
+        <button class="map-toggle" id="mapToggle" onclick="toggleMapPanel()">
+            <svg id="toggleIconGlobe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            <svg id="toggleIconClose" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+                <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+        </button>
+        <div id="map" class="{{OPTED_IN_CLASS}}"></div>
+        <div class="optin-overlay{{OVERLAY_HIDDEN}}" id="optinOverlay">
+            <button class="optin-btn" onclick="optIn()">Enable Map</button>
+        </div>
+        <div class="map-controls">
+            <button class="map-btn{{BTN_VISIBLE}}" id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
+        </div>
+    </div>
 
+    <script>
+        window.HYPERMIND_OPTED_IN = {{OPTED_IN}};
+    </script>
     <script src="/app.js"></script>
 </body>
 </html>
