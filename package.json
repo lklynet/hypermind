@@ -29,5 +29,8 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "hyperswarm": "^4.16.0"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^11.8.0"
   }
 }
