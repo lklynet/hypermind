@@ -1,6 +1,8 @@
 const fs = require("fs");
 const path = require("path");
-const iploc = require("ip-location-api");
+
+// Lazy-loaded
+let iploc = null;
 
 const OPTIN_FILE = path.join(__dirname, "../../.location-optin");
 
@@ -18,6 +20,10 @@ class LocationManager {
 		this.initialized = true;
 
 		try {
+			// Lazy load ip-location-api only when needed
+			if (!iploc) {
+				iploc = require("ip-location-api");
+			}
 			await iploc.reload({ fields: ["latitude", "longitude", "city"] });
 			const response = await fetch("https://api.ipify.org?format=json");
 			const { ip } = await response.json();

@@ -13,15 +13,6 @@
     <div class="container">
         <div id="count" class="count" data-initial-count="{{COUNT}}">{{COUNT}}</div>
         <div class="label">Active Nodes</div>
-        <div class="map-container" id="mapContainer">
-            <div id="map" class="{{OPTED_IN_CLASS}}"></div>
-            <div class="optin-overlay{{OVERLAY_HIDDEN}}" id="optinOverlay">
-                <button class="optin-btn" onclick="optIn()">Enable Map</button>
-            </div>
-            <div class="map-controls">
-                <button class="map-btn{{BTN_VISIBLE}}" id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
-            </div>
-        </div>
         <div class="footer">
             powered by <a href="https://github.com/lklynet/hypermind" target="_blank">hypermind</a>
         </div>
@@ -73,6 +64,26 @@
                 <span class="stat-value" id="diag-leave">0</span>
             </div>
             <div class="update-time" id="last-update">last 10 seconds</div>
+        </div>
+    </div>
+
+    <!-- Floating map panel - starts collapsed -->
+    <div class="map-container collapsed" id="mapContainer">
+        <button class="map-toggle" id="mapToggle" onclick="toggleMapPanel()">
+            <svg id="toggleIconGlobe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            <svg id="toggleIconClose" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+                <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+        </button>
+        <div id="map" class="{{OPTED_IN_CLASS}}"></div>
+        <div class="optin-overlay{{OVERLAY_HIDDEN}}" id="optinOverlay">
+            <button class="optin-btn" onclick="optIn()">Enable Map</button>
+        </div>
+        <div class="map-controls">
+            <button class="map-btn{{BTN_VISIBLE}}" id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
         </div>
     </div>
 

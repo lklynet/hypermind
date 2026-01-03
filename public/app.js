@@ -333,8 +333,38 @@ function toggleFullscreen() {
 	btn.textContent = container.classList.contains("fullscreen")
 		? "Exit"
 		: "Fullscreen";
-	map.resize();
+	setTimeout(() => map.resize(), 160);
 }
+
+function toggleMapPanel() {
+	const container = document.getElementById("mapContainer");
+	const globeIcon = document.getElementById("toggleIconGlobe");
+	const closeIcon = document.getElementById("toggleIconClose");
+	const isCollapsed = container.classList.toggle("collapsed");
+
+	globeIcon.style.display = isCollapsed ? "block" : "none";
+	closeIcon.style.display = isCollapsed ? "none" : "block";
+
+	localStorage.setItem("mapCollapsed", isCollapsed ? "true" : "false");
+
+	if (!isCollapsed) {
+		setTimeout(() => map.resize(), 160);
+	}
+}
+
+// Restore map panel state from localStorage
+(function initMapPanelState() {
+	const saved = localStorage.getItem("mapCollapsed");
+	// Default to collapsed if no preference saved
+	if (saved === "false") {
+		const container = document.getElementById("mapContainer");
+		const globeIcon = document.getElementById("toggleIconGlobe");
+		const closeIcon = document.getElementById("toggleIconClose");
+		container.classList.remove("collapsed");
+		globeIcon.style.display = "none";
+		closeIcon.style.display = "block";
+	}
+})();
 
 const evtSource = new EventSource("/events");
 
