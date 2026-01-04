@@ -25,13 +25,21 @@ You need a service that:
 
 There is no central server. There is no database. There is only **The Swarm**.
 
+## » Features
+
+- **🔢 Live Counter**: See how many nodes are running worldwide
+- **🗺️ Peer Map**: Visualize node locations on an interactive world map
+- **💬 Ephemeral Chat**: Send fleeting messages that vanish when you restart
+- **📊 Diagnostics**: Watch message flows, bandwidth, and peer health
+- **✨ Particle Visualization**: Because numbers alone are boring
+
 ## » How it works
 
 We utilize the **Hyperswarm** DHT (Distributed Hash Table) to achieve a singular, trivial goal of **Counting.**
 
 1. **Discovery:** Your node screams into the digital void (`hypermind-lklynet-v1`) to find friends.
 2. **Gossip:** Nodes connect and whisper "I exist" to each other.
-3. **Consensus:** Each node maintains a list of peers seen in the last 2.5 seconds.
+3. **Consensus:** Each node maintains a list of peers seen in the last 15 seconds.
 
 If you turn your container off, you vanish from the count. If everyone turns it off, the network ceases to exist. If you turn it back on, you are the Creator of the Universe (Population: 1).
 
@@ -67,6 +75,7 @@ services:
     restart: unless-stopped
     environment:
       - PORT=3000
+      - ENABLE_CHAT=true  # Optional: enable ephemeral chat
 
 ```
 
@@ -126,6 +135,7 @@ See detailed [instructions](https://gethomepage.dev/configs/services/#icons).
 | --- | --- | --- |
 | `PORT` | `3000` | The port the web dashboard listens on. Since `--network host` is used, this port opens directly on the host. |
 | `MAX_PEERS` | `1000000` | Maximum number of peers to track in the swarm. Unless you're expecting the entire internet to join, the default is probably fine. |
+| `ENABLE_CHAT` | `false` | Enable ephemeral P2P chat. Messages exist only in memory and vanish when nodes restart. |
 
 ## » Usage
 
@@ -137,6 +147,18 @@ The dashboard updates in **Realtime** via Server-Sent Events.
 
 * **Active Nodes:** The total number of people currently running this joke.
 * **Direct Connections:** The number of peers your node is actually holding hands with.
+* **Peer Map:** Click "map" to see where your fellow nodes are located (approximately).
+* **Diagnostics:** Click "diagnostics" for the nerdy details.
+
+### Chat (Optional)
+
+When `ENABLE_CHAT=true`, a terminal-style chat panel appears. You can:
+
+- Set a nickname (stored locally, max 16 chars)
+- Send short messages (max 140 chars, because constraints breed creativity)
+- Watch messages appear from across the swarm
+
+Messages are rate-limited (2s cooldown, 5 per 30s) and disappear when you restart. It's like Snapchat, but for infrastructure nerds.
 
 ## » Local Development
 
@@ -148,6 +170,9 @@ npm install
 
 # Run the beast
 npm start
+
+# With chat enabled
+ENABLE_CHAT=true npm start
 
 ```
 
@@ -166,6 +191,29 @@ PORT=3001 npm start
 
 They should discover each other, and the number will become `2`. Dopamine achieved.
 
+### Testing in WSL2 / Docker Desktop
+
+DHT discovery sometimes fails in virtualized environments. Use the TCP relay:
+
+```bash
+# Terminal 1 - Start relay server
+node relay-server.js
+
+# Terminal 2 - Node 1
+RELAY_PORT=4000 ENABLE_CHAT=true PORT=3000 node server.js
+
+# Terminal 3 - Node 2
+RELAY_PORT=4000 ENABLE_CHAT=true PORT=3001 node server.js
+```
+
+---
+
+## » Documentation
+
+- [Architecture Guide](docs/ARCHITECTURE.md) — How it works under the hood
+- [API Reference](docs/API.md) — Endpoints for integration
+- [Troubleshooting](docs/TROUBLESHOOTING.md) — When things go wrong
+
 ---
 
 ### FAQ
@@ -174,10 +222,13 @@ They should discover each other, and the number will become `2`. Dopamine achiev
 A: No. We respect your GPU too much.
 
 **Q: Does this store data?**
-A: No. It has the short-term working memory of a honeybee (approx. 2.5 seconds). Which is biologically accurate and thematically consistent.
+A: No. It has the short-term working memory of a honeybee (approx. 15 seconds). Which is biologically accurate and thematically consistent.
 
 **Q: Why did you make this?**
 A: The homelab must grow. ¯\\_(ツ)_/¯
+
+**Q: Is the chat secure?**
+A: Messages are signed but not encrypted. Don't share secrets. It's gossip, literally.
 
 ## » Star History!!
 
