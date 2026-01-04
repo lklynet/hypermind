@@ -318,3 +318,35 @@ a { color: #4b5563; text-decoration: none; border-bottom: 1px dotted #4b5563; }
 .nickname-save-btn:hover {
     background: #22c55e;
 }
+
+/* Cooldown indicator */
+.cooldown-indicator {
+    color: #f59e0b;
+    font-size: 11px;
+    margin-left: 10px;
+    white-space: nowrap;
+    min-width: 50px;
+}
+
+.cooldown-indicator.active {
+    animation: pulse-orange 1s infinite;
+}
+
+@keyframes pulse-orange {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Disabled input state */
+#terminal-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#terminal-input:disabled::placeholder {
+    color: #f59e0b;
+}
+
+.terminal-input-line.rate-limited .prompt {
+    color: #f59e0b !important;
+}

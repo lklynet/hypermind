@@ -250,9 +250,12 @@ const promptEl = document.querySelector('.prompt');
 const nickDisplay = document.getElementById('nick-display');
 const nicknameModal = document.getElementById('nicknameModal');
 const nicknameInput = document.getElementById('nickname-input');
+const cooldownIndicator = document.getElementById('cooldown-indicator');
+const terminalInputLine = document.querySelector('.terminal-input-line');
 let myId = null;
 let myNick = localStorage.getItem('hypermind_nick') || '';
-let myChatHistory = [];
+let cooldownTimer = null;
+let cooldownEndTime = 0;
 
 // Initialize nickname display
 const updateNickDisplay = () => {
@@ -337,18 +340,39 @@ const toggleChat = () => {
     }
 }
 
-const updatePromptStatus = () => {
-    const now = Date.now();
-    myChatHistory = myChatHistory.filter(t => now - t < 10000);
-    
-    if (myChatHistory.length >= 5) {
-        promptEl.style.color = 'orange';
-    } else {
-        promptEl.style.color = '#4ade80';
+// Cooldown management
+const startCooldown = (ms) => {
+    if (cooldownTimer) {
+        clearInterval(cooldownTimer);
     }
+    
+    cooldownEndTime = Date.now() + ms;
+    terminalInput.disabled = true;
+    terminalInputLine.classList.add('rate-limited');
+    cooldownIndicator.classList.add('active');
+    
+    const updateCooldownDisplay = () => {
+        const remaining = Math.max(0, cooldownEndTime - Date.now());
+        if (remaining <= 0) {
+            clearInterval(cooldownTimer);
+            cooldownTimer = null;
+            terminalInput.disabled = false;
+            terminalInputLine.classList.remove('rate-limited');
+            cooldownIndicator.classList.remove('active');
+            cooldownIndicator.innerText = '';
+            terminalInput.focus();
+        } else {
+            cooldownIndicator.innerText = `${(remaining / 1000).toFixed(1)}s`;
+        }
+    };
+    
+    updateCooldownDisplay();
+    cooldownTimer = setInterval(updateCooldownDisplay, 100);
 };
 
-setInterval(updatePromptStatus, 500);
+const isOnCooldown = () => {
+    return Date.now() < cooldownEndTime;
+};
 
 const getColorFromId = (id) => {
     if (!id) return '#666';
@@ -404,6 +428,11 @@ terminalInput.addEventListener('keypress', async (e) => {
         const content = terminalInput.value.trim();
         if (!content) return;
         
+        // Check if on cooldown (shouldn't happen since input is disabled, but double-check)
+        if (isOnCooldown()) {
+            return;
+        }
+        
         terminalInput.value = '';
         
         try {
@@ -413,16 +442,21 @@ terminalInput.addEventListener('keypress', async (e) => {
                 body: JSON.stringify({ msg: content, nick: myNick || null })
             });
 
+            const data = await res.json();
+            
             if (res.ok) {
-                myChatHistory.push(Date.now());
-                updatePromptStatus();
-            } else if (res.status === 429) {
-                // Force update if we hit the limit unexpectedly
-                // Add a dummy timestamp to force the limit state if not already there
-                if (myChatHistory.length < 5) {
-                    myChatHistory.push(Date.now());
+                // Start cooldown based on server response
+                if (data.cooldown && data.cooldown > 0) {
+                    startCooldown(data.cooldown);
                 }
-                updatePromptStatus();
+            } else if (res.status === 429) {
+                // Rate limited - start cooldown from server response
+                if (data.cooldown && data.cooldown > 0) {
+                    startCooldown(data.cooldown);
+                } else {
+                    // Fallback: 2 second cooldown
+                    startCooldown(2000);
+                }
             }
         } catch (err) {
             console.error('Failed to send message', err);
