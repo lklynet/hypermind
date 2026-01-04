@@ -494,6 +494,33 @@ Ephemeral chat message. Sent via `/api/chat` endpoint, relayed through gossip.
 5. **Close handling**: Remove `socket.peerId` from peer list, broadcast update.
 6. **Error handling**: Silent — `socket.on("error", () => {})`.
 
+### Connection Types
+
+The SwarmManager tracks two types of connections:
+
+| Type | Storage | Source |
+|------|---------|--------|
+| **DHT connections** | `this.swarm.connections` | Hyperswarm peer discovery |
+| **Relay connections** | `this.extraConnections` | TCP relay for local testing |
+
+### `getAllConnections()` Method
+
+Returns a unified `Set` of all active connections (DHT + relay):
+
+```javascript
+getAllConnections() {
+    const all = new Set(this.swarm.connections);
+    for (const socket of this.extraConnections) {
+        if (!socket.destroyed) {
+            all.add(socket);
+        }
+    }
+    return all;
+}
+```
+
+**Always use `getAllConnections().size`** for "direct" connection counts to ensure relay connections are included when using `RELAY_PORT`.
+
 ---
 
 ## Security Model

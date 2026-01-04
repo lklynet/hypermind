@@ -17,7 +17,7 @@ const setupRoutes = (app, identity, peerManager, swarm, sseManager, diagnostics)
 
     app.get("/", (req, res) => {
         const count = peerManager.size;
-        const directPeers = swarm.getSwarm().connections.size;
+        const directPeers = swarm.getAllConnections().size;
 
         const html = HTML_TEMPLATE
             .replace(/\{\{COUNT\}\}/g, count)
@@ -38,7 +38,7 @@ const setupRoutes = (app, identity, peerManager, swarm, sseManager, diagnostics)
         const data = JSON.stringify({
             count: peerManager.size,
             totalUnique: peerManager.totalUniquePeers,
-            direct: swarm.getSwarm().connections.size,
+            direct: swarm.getAllConnections().size,
             id: identity.id,
             diagnostics: diagnostics.getStats(),
             chatEnabled: ENABLE_CHAT,
@@ -55,7 +55,7 @@ const setupRoutes = (app, identity, peerManager, swarm, sseManager, diagnostics)
         res.json({
             count: peerManager.size,
             totalUnique: peerManager.totalUniquePeers,
-            direct: swarm.getSwarm().connections.size,
+            direct: swarm.getAllConnections().size,
             id: identity.id,
             diagnostics: diagnostics.getStats(),
             chatEnabled: ENABLE_CHAT,

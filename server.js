@@ -22,7 +22,7 @@ const main = async () => {
     sseManager.broadcastUpdate({
       count: peerManager.size,
       totalUnique: peerManager.totalUniquePeers,
-      direct: swarmManager.getSwarm().connections.size,
+      direct: swarmManager.getAllConnections().size,
       id: identity.id,
       diagnostics: diagnostics.getStats(),
       chatEnabled: ENABLE_CHAT,
@@ -61,7 +61,7 @@ const main = async () => {
 
   diagnostics.startLogging(
     () => peerManager.size,
-    () => swarmManager.getSwarm().connections.size
+    () => swarmManager.getAllConnections().size
   );
 
   setInterval(() => {
