@@ -19,7 +19,7 @@ class PeerManager {
 		// Validate and store location if provided
 		const peerLoc =
 			loc && typeof loc.lat === "number" && typeof loc.lon === "number"
-				? { lat: loc.lat, lon: loc.lon, city: loc.city || null }
+				? { lat: loc.lat, lon: loc.lon, city: loc.city || null, region: loc.region || null }
 				: stored
 				? stored.loc
 				: null;

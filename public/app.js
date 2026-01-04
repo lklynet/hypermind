@@ -100,18 +100,38 @@ document.addEventListener("keydown", (e) => {
 });
 
 // MapLibre Map
+const mapStyles = {
+	light: "https://tiles.openfreemap.org/styles/liberty",
+	dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+};
+let currentMapTheme = localStorage.getItem("mapTheme") || "light";
+
 const map = new maplibregl.Map({
 	container: "map",
-	style: "https://tiles.openfreemap.org/styles/liberty",
+	style: mapStyles[currentMapTheme],
 	center: [0, 20],
 	zoom: 0.8,
 	interactive: true,
 });
 
-map.on("load", () => {
+// Update theme button text on load
+if (currentMapTheme === "dark") {
+	document.getElementById("themeBtn").textContent = "Light";
+}
+
+let lastPeerData = { type: "FeatureCollection", features: [] };
+const countMarkers = {};
+
+function setupMapLayers() {
+	// Remove existing layers/source if present (for theme switching)
+	["city-points", "city-glow", "cluster-points", "cluster-glow"].forEach((id) => {
+		if (map.getLayer(id)) map.removeLayer(id);
+	});
+	if (map.getSource("peers")) map.removeSource("peers");
+
 	map.addSource("peers", {
 		type: "geojson",
-		data: { type: "FeatureCollection", features: [] },
+		data: lastPeerData,
 		cluster: true,
 		clusterMaxZoom: 14,
 		clusterRadius: 50,
@@ -121,7 +141,6 @@ map.on("load", () => {
 		},
 	});
 
-	// Cluster glow
 	map.addLayer({
 		id: "cluster-glow",
 		type: "circle",
@@ -129,23 +148,12 @@ map.on("load", () => {
 		filter: ["has", "point_count"],
 		paint: {
 			"circle-color": ["case", ["get", "hasSelf"], "#4ade80", "#22d3ee"],
-			"circle-radius": [
-				"interpolate",
-				["linear"],
-				["get", "totalCount"],
-				1,
-				25,
-				50,
-				45,
-				200,
-				60,
-			],
+			"circle-radius": ["interpolate", ["linear"], ["get", "totalCount"], 1, 25, 50, 45, 200, 60],
 			"circle-opacity": 0.2,
 			"circle-blur": 1,
 		},
 	});
 
-	// Cluster core dot
 	map.addLayer({
 		id: "cluster-points",
 		type: "circle",
@@ -153,22 +161,11 @@ map.on("load", () => {
 		filter: ["has", "point_count"],
 		paint: {
 			"circle-color": ["case", ["get", "hasSelf"], "#4ade80", "#22d3ee"],
-			"circle-radius": [
-				"interpolate",
-				["linear"],
-				["get", "totalCount"],
-				1,
-				10,
-				50,
-				20,
-				200,
-				30,
-			],
+			"circle-radius": ["interpolate", ["linear"], ["get", "totalCount"], 1, 10, 50, 20, 200, 30],
 			"circle-opacity": 0.9,
 		},
 	});
 
-	// Individual city glow (unclustered)
 	map.addLayer({
 		id: "city-glow",
 		type: "circle",
@@ -176,23 +173,12 @@ map.on("load", () => {
 		filter: ["!", ["has", "point_count"]],
 		paint: {
 			"circle-color": ["case", ["get", "hasSelf"], "#4ade80", "#22d3ee"],
-			"circle-radius": [
-				"interpolate",
-				["linear"],
-				["get", "count"],
-				1,
-				20,
-				10,
-				35,
-				50,
-				50,
-			],
+			"circle-radius": ["interpolate", ["linear"], ["get", "count"], 1, 20, 10, 35, 50, 50],
 			"circle-opacity": 0.2,
 			"circle-blur": 1,
 		},
 	});
 
-	// Individual city core dot (unclustered)
 	map.addLayer({
 		id: "city-points",
 		type: "circle",
@@ -200,127 +186,166 @@ map.on("load", () => {
 		filter: ["!", ["has", "point_count"]],
 		paint: {
 			"circle-color": ["case", ["get", "hasSelf"], "#4ade80", "#22d3ee"],
-			"circle-radius": [
-				"interpolate",
-				["linear"],
-				["get", "count"],
-				1,
-				6,
-				10,
-				12,
-				50,
-				18,
-			],
+			"circle-radius": ["interpolate", ["linear"], ["get", "count"], 1, 6, 10, 12, 50, 18],
 			"circle-opacity": 0.9,
 		},
 	});
 
-	// Pulse animation - glow expands and fades
-	let pulsePhase = 0;
-	setInterval(() => {
-		pulsePhase = (pulsePhase + 0.05) % (Math.PI * 2);
-		const scale = 1 + Math.sin(pulsePhase) * 0.3;
-		const opacity = 0.25 - Math.sin(pulsePhase) * 0.15;
-		if (map.getLayer("city-glow")) {
-			map.setPaintProperty(
-				"city-glow",
-				"circle-opacity",
-				Math.max(0.05, opacity)
-			);
-			map.setPaintProperty("city-glow", "circle-radius", [
-				"interpolate",
-				["linear"],
-				["get", "count"],
-				1,
-				20 * scale,
-				10,
-				35 * scale,
-				50,
-				50 * scale,
-			]);
-		}
-		if (map.getLayer("cluster-glow")) {
-			map.setPaintProperty(
-				"cluster-glow",
-				"circle-opacity",
-				Math.max(0.05, opacity)
-			);
-			map.setPaintProperty("cluster-glow", "circle-radius", [
-				"interpolate",
-				["linear"],
-				["get", "totalCount"],
-				1,
-				25 * scale,
-				50,
-				45 * scale,
-				200,
-				60 * scale,
-			]);
-		}
-	}, 50);
-
-	// HTML markers for counts (clusters and individual cities)
-	const countMarkers = {};
-
-	function updateCountMarkers() {
-		const source = map.getSource("peers");
-		if (!source) return;
-
-		// Get visible features (includes both clusters and individual points)
-		const features = map.querySourceFeatures("peers");
-		const seenIds = new Set();
-
-		features.forEach((f) => {
-			const coords = f.geometry.coordinates;
-			const isCluster = f.properties.cluster;
-			const count = isCluster
-				? f.properties.totalCount
-				: f.properties.count;
-			const markerId = isCluster
-				? "cluster-" + f.properties.cluster_id
-				: "city-" + f.properties.city;
-
-			if (!count) return;
-			seenIds.add(markerId);
-
-			if (!countMarkers[markerId]) {
-				const el = document.createElement("div");
-				el.className = "cluster-label";
-				el.innerText = count;
-				countMarkers[markerId] = new maplibregl.Marker({ element: el })
-					.setLngLat(coords)
-					.addTo(map);
-			} else {
-				countMarkers[markerId].setLngLat(coords);
-				countMarkers[markerId].getElement().innerText = count;
-			}
-		});
-
-		// Remove stale markers
-		Object.keys(countMarkers).forEach((id) => {
-			if (!seenIds.has(id)) {
-				countMarkers[id].remove();
-				delete countMarkers[id];
-			}
-		});
-	}
-
-	map.on("moveend", updateCountMarkers);
-	map.on("sourcedata", (e) => {
-		if (e.sourceId === "peers" && e.isSourceLoaded) {
+	// Force data refresh after layer setup
+	map.once("idle", () => {
+		if (map.getSource("peers") && lastPeerData.features.length > 0) {
+			map.getSource("peers").setData(lastPeerData);
 			updateCountMarkers();
 		}
 	});
+}
+
+// Pulse animation
+let pulsePhase = 0;
+setInterval(() => {
+	pulsePhase = (pulsePhase + 0.05) % (Math.PI * 2);
+	const scale = 1 + Math.sin(pulsePhase) * 0.3;
+	const opacity = 0.25 - Math.sin(pulsePhase) * 0.15;
+	if (map.getLayer("city-glow")) {
+		map.setPaintProperty("city-glow", "circle-opacity", Math.max(0.05, opacity));
+		map.setPaintProperty("city-glow", "circle-radius", [
+			"interpolate", ["linear"], ["get", "count"], 1, 20 * scale, 10, 35 * scale, 50, 50 * scale,
+		]);
+	}
+	if (map.getLayer("cluster-glow")) {
+		map.setPaintProperty("cluster-glow", "circle-opacity", Math.max(0.05, opacity));
+		map.setPaintProperty("cluster-glow", "circle-radius", [
+			"interpolate", ["linear"], ["get", "totalCount"], 1, 25 * scale, 50, 45 * scale, 200, 60 * scale,
+		]);
+	}
+}, 50);
+
+function updateCountMarkers() {
+	const source = map.getSource("peers");
+	if (!source) return;
+
+	const features = map.querySourceFeatures("peers");
+	const seenIds = new Set();
+
+	features.forEach((f) => {
+		const coords = f.geometry.coordinates;
+		const isCluster = f.properties.cluster;
+		const count = isCluster ? f.properties.totalCount : f.properties.count;
+		const markerId = isCluster ? "cluster-" + f.properties.cluster_id : "city-" + f.properties.city;
+
+		if (!count) return;
+		seenIds.add(markerId);
+
+		if (!countMarkers[markerId]) {
+			const el = document.createElement("div");
+			el.className = "cluster-label";
+			el.innerText = count;
+			countMarkers[markerId] = new maplibregl.Marker({ element: el }).setLngLat(coords).addTo(map);
+		} else {
+			countMarkers[markerId].setLngLat(coords);
+			countMarkers[markerId].getElement().innerText = count;
+		}
+	});
+
+	Object.keys(countMarkers).forEach((id) => {
+		if (!seenIds.has(id)) {
+			countMarkers[id].remove();
+			delete countMarkers[id];
+		}
+	});
+}
+
+// Popup for city details
+const popup = new maplibregl.Popup({
+	closeButton: true,
+	closeOnClick: true,
+	className: "peer-popup",
+});
+
+// Global event handlers (survive style changes)
+map.on("moveend", updateCountMarkers);
+map.on("sourcedata", (e) => {
+	if (e.sourceId === "peers" && e.isSourceLoaded) {
+		updateCountMarkers();
+	}
+});
+
+// Initial layer setup
+map.once("style.load", () => {
+	setupMapLayers();
+
+	// Layer click handlers
+	map.on("click", "city-points", (e) => {
+		const feature = e.features[0];
+		const props = feature.properties;
+		const coords = feature.geometry.coordinates.slice();
+
+		const city = props.city || "Unknown";
+		const region = props.region || "";
+		const location = region ? `${city}, ${region}` : city;
+
+		let peerIds = [];
+		try {
+			peerIds = typeof props.peerIds === "string" ? JSON.parse(props.peerIds) : props.peerIds || [];
+		} catch (err) {
+			peerIds = [];
+		}
+
+		const peerList = peerIds.map((id) => `<div class="peer-id">${id}</div>`).join("");
+
+		popup
+			.setLngLat(coords)
+			.setHTML(`<div class="popup-title">${location}</div><div class="popup-peers">${peerList}</div>`)
+			.addTo(map);
+	});
+
+	map.on("click", "cluster-points", (e) => {
+		const feature = e.features[0];
+		const clusterId = feature.properties.cluster_id;
+		const source = map.getSource("peers");
+
+		source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+			if (err) return;
+			map.easeTo({ center: feature.geometry.coordinates, zoom: zoom });
+		});
+	});
+
+	map.on("mouseenter", "city-points", () => { map.getCanvas().style.cursor = "pointer"; });
+	map.on("mouseleave", "city-points", () => { map.getCanvas().style.cursor = ""; });
+	map.on("mouseenter", "cluster-points", () => { map.getCanvas().style.cursor = "pointer"; });
+	map.on("mouseleave", "cluster-points", () => { map.getCanvas().style.cursor = ""; });
 });
 
 function toggleFullscreen() {
 	const container = document.getElementById("mapContainer");
 	const btn = document.getElementById("fullscreenBtn");
 	container.classList.toggle("fullscreen");
-	btn.textContent = container.classList.contains("fullscreen")
-		? "Exit"
-		: "Fullscreen";
+	btn.textContent = container.classList.contains("fullscreen") ? "Exit" : "Fullscreen";
 	setTimeout(() => map.resize(), 160);
+}
+
+function toggleMapTheme() {
+	currentMapTheme = currentMapTheme === "light" ? "dark" : "light";
+	localStorage.setItem("mapTheme", currentMapTheme);
+	document.getElementById("themeBtn").textContent = currentMapTheme === "light" ? "Dark" : "Light";
+
+	// Store current data before style change
+	const dataToRestore = JSON.parse(JSON.stringify(lastPeerData));
+
+	map.setStyle(mapStyles[currentMapTheme]);
+
+	// Poll until style is loaded, then restore layers
+	const checkStyleLoaded = setInterval(() => {
+		if (map.isStyleLoaded()) {
+			clearInterval(checkStyleLoaded);
+			setupMapLayers();
+			setTimeout(() => {
+				if (map.getSource("peers")) {
+					map.getSource("peers").setData(dataToRestore);
+				}
+			}, 50);
+		}
+	}, 50);
 }
 
 function toggleMapPanel() {
@@ -409,8 +434,11 @@ evtSource.onmessage = (event) => {
 	}
 
 	// Update map locations
-	if (data.locations && map.isStyleLoaded() && map.getSource("peers")) {
-		map.getSource("peers").setData(data.locations);
+	if (data.locations) {
+		lastPeerData = data.locations;
+		if (map.isStyleLoaded() && map.getSource("peers")) {
+			map.getSource("peers").setData(data.locations);
+		}
 	}
 };
 

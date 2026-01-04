@@ -16,6 +16,7 @@ class LocationManager {
 					lat: data.latitude,
 					lon: data.longitude,
 					city: data.city || "Unknown",
+					region: data.region || null,
 				};
 				console.log("[Geo] Location ready");
 			} else {
@@ -43,12 +44,15 @@ class LocationManager {
 					cityGroups.set(cityKey, {
 						lat: data.loc.lat,
 						lon: data.loc.lon,
+						region: data.loc.region || null,
 						count: 0,
 						hasSelf: false,
+						peerIds: [],
 					});
 				}
 				const group = cityGroups.get(cityKey);
 				group.count++;
+				group.peerIds.push(id.slice(-8));
 				if (id === selfId) group.hasSelf = true;
 			}
 		}
@@ -57,7 +61,13 @@ class LocationManager {
 		for (const [city, data] of cityGroups) {
 			features.push({
 				type: "Feature",
-				properties: { city, count: data.count, hasSelf: data.hasSelf },
+				properties: {
+					city,
+					region: data.region,
+					count: data.count,
+					hasSelf: data.hasSelf,
+					peerIds: data.peerIds,
+				},
 				geometry: { type: "Point", coordinates: [data.lon, data.lat] },
 			});
 		}
