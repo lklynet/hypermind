@@ -18,10 +18,15 @@ const main = async () => {
   const sseManager = new SSEManager();
   const locationManager = new LocationManager();
 
-  // Initialize location before adding self to peer list
-  await locationManager.init();
+  // Add self to peer list immediately (location will be added when ready)
+  peerManager.addOrUpdatePeer(identity.id, peerManager.getSeq(), null);
 
-  peerManager.addOrUpdatePeer(identity.id, peerManager.getSeq(), locationManager.getLocation());
+  // Initialize location in background (non-blocking)
+  locationManager.init().then(() => {
+    if (locationManager.getLocation()) {
+      peerManager.addOrUpdatePeer(identity.id, peerManager.getSeq(), locationManager.getLocation());
+    }
+  });
 
   const broadcastUpdate = (force = false) => {
     const locations = locationManager.getPeerLocations(peerManager.getSeenPeers(), identity.id);
