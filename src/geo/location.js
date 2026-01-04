@@ -1,6 +1,3 @@
-// Lazy-loaded
-let iploc = null;
-
 class LocationManager {
 	constructor() {
 		this.location = null;
@@ -11,20 +8,14 @@ class LocationManager {
 		if (this.initialized) return;
 
 		try {
-			// Lazy load ip-location-api only when needed
-			if (!iploc) {
-				iploc = require("ip-location-api");
-			}
-			await iploc.reload({ fields: ["latitude", "longitude", "city"] });
-			const response = await fetch("https://api.ipify.org?format=json");
-			const { ip } = await response.json();
-			const loc = await iploc.lookup(ip);
+			const response = await fetch("https://ipwho.is/");
+			const data = await response.json();
 
-			if (loc && loc.latitude && loc.longitude) {
+			if (data.success && data.latitude && data.longitude) {
 				this.location = {
-					lat: loc.latitude,
-					lon: loc.longitude,
-					city: loc.city || "Unknown",
+					lat: data.latitude,
+					lon: data.longitude,
+					city: data.city || "Unknown",
 				};
 				console.log("[Geo] Location ready");
 			} else {
