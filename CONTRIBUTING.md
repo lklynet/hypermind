@@ -28,7 +28,7 @@ Ready to write some code? Follow the setup below and submit a PR.
 
 ### Prerequisites
 
-- **Node.js 20+** (we use the built-in test runner)
+- **Node.js 22+** (we use the built-in test runner)
 - **npm** for package management
 
 ### Installation
