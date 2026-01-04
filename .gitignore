@@ -2,3 +2,6 @@ node_modules
 data
 .DS_Store
 .env
+
+# Biome cache
+.biome
