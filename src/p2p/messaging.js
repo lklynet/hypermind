@@ -1,6 +1,7 @@
 const { verifyPoW, verifySignature, createPublicKey } = require("../core/security");
-const { MAX_RELAY_HOPS, ENABLE_CHAT } = require("../config/constants");
+const { MAX_RELAY_HOPS, ENABLE_CHAT, CHAT_MAX_LENGTH, CHAT_NICK_MAX_LENGTH } = require("../config/constants");
 const { BloomFilterManager } = require("../state/bloom");
+const { ChatRateLimiter } = require("../state/ratelimit");
 
 class MessageHandler {
     constructor(peerManager, diagnostics, relayCallback, broadcastCallback, chatCallback, chatSystemFn) {
@@ -12,7 +13,7 @@ class MessageHandler {
         this.chatSystemFn = chatSystemFn;
         this.bloomFilter = new BloomFilterManager();
         this.bloomFilter.start();
-        this.chatRateLimits = new Map();
+        this.chatRateLimiter = new ChatRateLimiter();
     }
 
     handleMessage(msg, sourceSocket) {
@@ -133,29 +134,56 @@ class MessageHandler {
     }
 
     handleChat(msg, sourceSocket) {
-        // Identity Verification: Ensure the sender matches the authenticated socket
-        if (!sourceSocket.peerId || sourceSocket.peerId !== msg.sender) {
+        if (!ENABLE_CHAT) return;
+
+        const { id, nick, msg: content, ts, hops, nonce, sig } = msg;
+
+        // Verify PoW
+        if (!verifyPoW(id, nonce)) {
             return;
         }
 
-        // Rate Limiting: Prevent flooding (5 messages per 10 seconds per peer)
-        const now = Date.now();
-        let rateData = this.chatRateLimits.get(msg.sender);
-        
-        if (!rateData || now - rateData.windowStart > 10000) {
-            // Reset window
-            rateData = { count: 0, windowStart: now };
+        // Rate Limiting using ChatRateLimiter
+        if (!this.chatRateLimiter.canSend(id)) {
+            return;
         }
 
-        if (rateData.count >= 5) {
-            return; // Drop message
+        // Verify signature (signed as: chat:${msg}:${ts})
+        try {
+            const key = createPublicKey(id);
+            if (!verifySignature(`chat:${content}:${ts}`, sig, key)) {
+                return;
+            }
+        } catch (e) {
+            return;
         }
 
-        rateData.count++;
-        this.chatRateLimits.set(msg.sender, rateData);
+        // Check bloom filter for deduplication
+        const bloomKey = `chat:${ts}`;
+        if (this.bloomFilter.hasRelayed(id, bloomKey)) {
+            return;
+        }
 
+        // Record the message for rate limiting
+        this.chatRateLimiter.recordMessage(id);
+
+        // Mark as relayed
+        this.bloomFilter.markRelayed(id, bloomKey);
+
+        // Send to web clients
         if (this.chatCallback) {
-            this.chatCallback(msg);
+            this.chatCallback({
+                type: 'CHAT',
+                sender: id,
+                nick: nick || null,
+                content: content,
+                timestamp: ts
+            });
+        }
+
+        // Relay to other peers
+        if (hops < MAX_RELAY_HOPS) {
+            this.relayCallback({ ...msg, hops: hops + 1 }, sourceSocket);
         }
     }
 }
@@ -183,12 +211,22 @@ const validateMessage = (msg) => {
     }
 
     if (msg.type === "CHAT") {
-        const allowedFields = ['type', 'sender', 'content', 'timestamp'];
+        const allowedFields = ['type', 'id', 'nick', 'msg', 'ts', 'hops', 'nonce', 'sig'];
         const fields = Object.keys(msg);
-        return fields.every(f => allowedFields.includes(f)) &&
-            msg.sender && 
-            msg.content && typeof msg.content === 'string' && msg.content.length <= 140 &&
-            typeof msg.timestamp === 'number';
+        if (!fields.every(f => allowedFields.includes(f))) return false;
+        if (!msg.id || typeof msg.id !== 'string') return false;
+        if (!msg.msg || typeof msg.msg !== 'string') return false;
+        if (msg.msg.length > require("../config/constants").CHAT_MAX_LENGTH) return false;
+        if (typeof msg.ts !== 'number') return false;
+        if (typeof msg.hops !== 'number') return false;
+        if (!msg.nonce || !msg.sig) return false;
+        // Nickname validation (optional, but if present must be alphanumeric)
+        if (msg.nick !== null && msg.nick !== undefined) {
+            if (typeof msg.nick !== 'string') return false;
+            if (msg.nick.length > require("../config/constants").CHAT_NICK_MAX_LENGTH) return false;
+            if (!/^[a-zA-Z0-9_]*$/.test(msg.nick)) return false;
+        }
+        return true;
     }
 
     return false;

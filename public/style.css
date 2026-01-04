@@ -253,3 +253,68 @@ a { color: #4b5563; text-decoration: none; border-bottom: 1px dotted #4b5563; }
 .msg-content {
     color: #ddd;
 }
+
+/* Nickname display */
+.nick-display {
+    color: #4ade80;
+    cursor: pointer;
+    margin-right: 8px;
+    padding: 2px 6px;
+    border: 1px dashed #333;
+    border-radius: 3px;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.nick-display:hover {
+    border-color: #4ade80;
+    background: rgba(74, 222, 128, 0.1);
+}
+
+/* Nickname modal */
+.modal-content.nickname-content {
+    max-width: 350px;
+}
+
+.nickname-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#nickname-input {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #fff;
+    padding: 10px 12px;
+    font-size: 14px;
+    border-radius: 4px;
+    font-family: "Courier New", Courier, monospace;
+}
+
+#nickname-input:focus {
+    outline: none;
+    border-color: #4ade80;
+}
+
+.nickname-hint {
+    font-size: 11px;
+    color: #666;
+    margin: 0;
+}
+
+.nickname-save-btn {
+    background: #4ade80;
+    border: none;
+    color: #111;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.nickname-save-btn:hover {
+    background: #22c55e;
+}

@@ -124,6 +124,7 @@ Add this to your `services.yaml`:
 | `PORT` | `3000` | The port the web dashboard listens on. Since `--network host` is used, this port opens directly on the host. |
 | `MAX_PEERS` | `1000000` | Maximum number of peers to track in the swarm. Unless you're expecting the entire internet to join, the default is probably fine. |
 | `ENABLE_CHAT` | `false` | Set to `true` to enable the ephemeral P2P chat terminal. |
+| `RELAY_PORT` | - | Connect to TCP relay server for local testing (bypasses DHT). |
 
 ## » Features
 
@@ -136,9 +137,14 @@ It counts. That's the main thing.
 * **Ephemeral:** No database. No history. If you refresh, it's gone.
 * **Restricted:** You can only talk to your ~32 direct connections.
 * **Chaotic:** Every 30 seconds, the network rotates your connections. You might be mid-sentence and—*poof*—your audience changes.
-* **Anonymous:** You are identified only by the last 4 characters of your node ID.
+* **Nicknames:** Set an optional nickname that persists in your browser.
+* **Rate Limited:** 2 second cooldown between messages, max 5 messages per 30 seconds.
+* **Signed:** All messages are cryptographically signed with Ed25519.
 
 To enable this feature, set `ENABLE_CHAT=true`.
+
+### 3. Peer Map
+View connected peers on a world map using IP geolocation. Click the "map" link on the dashboard.
 
 ## » Usage
 
@@ -178,6 +184,23 @@ PORT=3001 npm start
 ```
 
 They should discover each other, and the number will become `2`. Dopamine achieved.
+
+### Local Testing with TCP Relay (WSL2/Docker)
+
+If DHT discovery fails (common in WSL2, Docker, or corporate networks), use the included TCP relay:
+
+```bash
+# Terminal 1 - Start the relay server
+node relay-server.js
+
+# Terminal 2 - Node 1
+RELAY_PORT=4000 ENABLE_CHAT=true PORT=3000 node server.js
+
+# Terminal 3 - Node 2
+RELAY_PORT=4000 ENABLE_CHAT=true PORT=3001 node server.js
+```
+
+> **Note:** Use `node server.js` directly instead of `npm start` to ensure environment variables pass correctly.
 
 ---
 

@@ -97,6 +97,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         closeDiagnostics();
         closeMap();
+        closeNicknameModal();
     }
 });
 
@@ -246,8 +247,57 @@ const terminalOutput = document.getElementById('terminal-output');
 const terminalInput = document.getElementById('terminal-input');
 const terminalToggle = document.getElementById('terminal-toggle');
 const promptEl = document.querySelector('.prompt');
+const nickDisplay = document.getElementById('nick-display');
+const nicknameModal = document.getElementById('nicknameModal');
+const nicknameInput = document.getElementById('nickname-input');
 let myId = null;
+let myNick = localStorage.getItem('hypermind_nick') || '';
 let myChatHistory = [];
+
+// Initialize nickname display
+const updateNickDisplay = () => {
+    if (myNick) {
+        nickDisplay.innerText = myNick + ':';
+        nickDisplay.title = 'Click to change nickname';
+    } else {
+        nickDisplay.innerText = '[set nick]';
+        nickDisplay.title = 'Click to set nickname';
+    }
+};
+
+const openNicknameModal = () => {
+    nicknameInput.value = myNick;
+    nicknameModal.classList.add('active');
+    nicknameInput.focus();
+};
+
+const closeNicknameModal = () => {
+    nicknameModal.classList.remove('active');
+};
+
+const saveNickname = () => {
+    const nick = nicknameInput.value.trim().replace(/[^a-zA-Z0-9_]/g, '').slice(0, 16);
+    myNick = nick;
+    localStorage.setItem('hypermind_nick', nick);
+    updateNickDisplay();
+    closeNicknameModal();
+};
+
+// Close modal on background click
+nicknameModal.addEventListener('click', (e) => {
+    if (e.target.id === 'nicknameModal') {
+        closeNicknameModal();
+    }
+});
+
+// Save on Enter in nickname input
+nicknameInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        saveNickname();
+    }
+});
+
+updateNickDisplay();
 
 terminalToggle.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -318,7 +368,14 @@ const appendMessage = (msg) => {
         div.innerText = `[SYSTEM] ${msg.content}`;
     } else if (msg.type === 'CHAT') {
         const senderColor = getColorFromId(msg.sender);
-        const senderName = msg.sender === myId ? 'You' : msg.sender.slice(-4);
+        const isMe = msg.sender === myId;
+        // Show nickname if available, otherwise show short ID
+        let senderName;
+        if (isMe) {
+            senderName = myNick || 'You';
+        } else {
+            senderName = msg.nick || msg.sender.slice(-4);
+        }
         
         const senderSpan = document.createElement('span');
         senderSpan.className = 'msg-sender';
@@ -335,6 +392,11 @@ const appendMessage = (msg) => {
     
     terminalOutput.appendChild(div);
     terminalOutput.scrollTop = terminalOutput.scrollHeight;
+    
+    // Limit messages in DOM
+    while (terminalOutput.children.length > 100) {
+        terminalOutput.removeChild(terminalOutput.firstChild);
+    }
 }
 
 terminalInput.addEventListener('keypress', async (e) => {
@@ -348,7 +410,7 @@ terminalInput.addEventListener('keypress', async (e) => {
             const res = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content })
+                body: JSON.stringify({ msg: content, nick: myNick || null })
             });
 
             if (res.ok) {

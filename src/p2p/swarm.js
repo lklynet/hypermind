@@ -1,6 +1,10 @@
 const Hyperswarm = require("hyperswarm");
+const net = require("net");
 const { signMessage } = require("../core/security");
-const { TOPIC, TOPIC_NAME, HEARTBEAT_INTERVAL, MAX_CONNECTIONS, CONNECTION_ROTATION_INTERVAL, ENABLE_CHAT } = require("../config/constants");
+const { TOPIC, HEARTBEAT_INTERVAL, MAX_CONNECTIONS, CONNECTION_ROTATION_INTERVAL, ENABLE_CHAT } = require("../config/constants");
+
+// TCP Relay port for local testing (bypasses DHT issues on WSL2)
+const RELAY_PORT = process.env.RELAY_PORT ? parseInt(process.env.RELAY_PORT) : null;
 
 class SwarmManager {
     constructor(identity, peerManager, diagnostics, messageHandler, relayFn, broadcastFn, chatSystemFn) {
@@ -11,6 +15,8 @@ class SwarmManager {
         this.relayFn = relayFn;
         this.broadcastFn = broadcastFn;
         this.chatSystemFn = chatSystemFn;
+        this.relaySocket = null; // TCP relay socket for local testing
+        this.extraConnections = new Set(); // Additional connections (relay)
 
         this.swarm = new Hyperswarm();
         this.heartbeatInterval = null;
@@ -20,11 +26,65 @@ class SwarmManager {
     async start() {
         this.swarm.on("connection", (socket) => this.handleConnection(socket));
 
-        const discovery = this.swarm.join(TOPIC);
-        await discovery.flushed();
+        // If using TCP relay, connect to it instead of DHT discovery
+        if (RELAY_PORT) {
+            console.log(`Connecting to TCP relay at 127.0.0.1:${RELAY_PORT}`);
+            this.connectToRelay();
+        } else {
+            const discovery = this.swarm.join(TOPIC);
+            await discovery.flushed();
+        }
 
         this.startHeartbeat();
         this.startRotation();
+    }
+
+    connectToRelay() {
+        const socket = net.createConnection({ host: '127.0.0.1', port: RELAY_PORT }, () => {
+            console.log("Connected to TCP relay server");
+            this.relaySocket = socket;
+            this.extraConnections.add(socket);
+            
+            // Send initial heartbeat
+            const sig = signMessage(`seq:${this.peerManager.getSeq()}`, this.identity.privateKey);
+            const hello = JSON.stringify({
+                type: "HEARTBEAT",
+                id: this.identity.id,
+                seq: this.peerManager.getSeq(),
+                hops: 0,
+                nonce: this.identity.nonce,
+                sig,
+            }) + "\n";
+            socket.write(hello);
+            this.broadcastFn();
+        });
+
+        socket.on("data", (data) => {
+            this.diagnostics.increment("bytesReceived", data.length);
+            try {
+                const msgs = data
+                    .toString()
+                    .split("\n")
+                    .filter((x) => x.trim());
+                for (const msgStr of msgs) {
+                    const msg = JSON.parse(msgStr);
+                    this.messageHandler.handleMessage(msg, socket);
+                }
+            } catch (e) {
+            }
+        });
+
+        socket.on("close", () => {
+            console.log("TCP relay connection closed, reconnecting...");
+            this.extraConnections.delete(socket);
+            this.relaySocket = null;
+            // Reconnect after 1 second
+            setTimeout(() => this.connectToRelay(), 1000);
+        });
+
+        socket.on("error", (err) => {
+            console.error("TCP relay error:", err.message);
+        });
     }
 
     handleConnection(socket) {
@@ -87,8 +147,16 @@ class SwarmManager {
                 sig,
             }) + "\n";
 
+            // Send to all Hyperswarm connections
             for (const socket of this.swarm.connections) {
                 socket.write(heartbeat);
+            }
+            
+            // Also send to relay/extra connections
+            for (const socket of this.extraConnections) {
+                if (!socket.destroyed) {
+                    socket.write(heartbeat);
+                }
             }
 
             const removed = this.peerManager.cleanupStalePeers();
@@ -155,9 +223,29 @@ class SwarmManager {
     broadcastChat(msg) {
         if (!ENABLE_CHAT) return;
         const msgStr = JSON.stringify(msg) + "\n";
+        
+        // Send to all Hyperswarm connections
         for (const socket of this.swarm.connections) {
             socket.write(msgStr);
         }
+        
+        // Also send to relay/extra connections
+        for (const socket of this.extraConnections) {
+            if (!socket.destroyed) {
+                socket.write(msgStr);
+            }
+        }
+    }
+
+    // Get all connections (Hyperswarm + relay)
+    getAllConnections() {
+        const all = new Set(this.swarm.connections);
+        for (const socket of this.extraConnections) {
+            if (!socket.destroyed) {
+                all.add(socket);
+            }
+        }
+        return all;
     }
 }
 

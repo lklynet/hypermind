@@ -80,7 +80,20 @@
         <div id="terminal-output" class="terminal-output"></div>
         <div class="terminal-input-line">
             <span class="prompt">&gt;</span>
+            <span id="nick-display" class="nick-display" onclick="openNicknameModal()" title="Click to set nickname"></span>
             <input type="text" id="terminal-input" maxlength="140" placeholder="Broadcast to direct peers..." autocomplete="off">
+        </div>
+    </div>
+
+    <div id="nicknameModal" class="modal">
+        <div class="modal-content nickname-content">
+            <button class="close-btn" onclick="closeNicknameModal()">×</button>
+            <div class="modal-title">Set Nickname</div>
+            <div class="nickname-form">
+                <input type="text" id="nickname-input" maxlength="16" placeholder="Enter nickname (optional)" autocomplete="off">
+                <p class="nickname-hint">Alphanumeric only, max 16 characters</p>
+                <button class="nickname-save-btn" onclick="saveNickname()">Save</button>
+            </div>
         </div>
     </div>
 
