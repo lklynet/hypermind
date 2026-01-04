@@ -1,4 +1,4 @@
-require('dotenv').config();
+require("dotenv").config();
 
 const { generateIdentity } = require("./src/core/identity");
 const { PeerManager } = require("./src/state/peers");
@@ -32,7 +32,7 @@ const main = async () => {
     peerManager,
     diagnostics,
     (msg, sourceSocket) => relayMessage(msg, sourceSocket, swarmManager.getSwarm(), diagnostics),
-    broadcastUpdate
+    broadcastUpdate,
   );
 
   const swarmManager = new SwarmManager(
@@ -41,14 +41,14 @@ const main = async () => {
     diagnostics,
     messageHandler,
     (msg, sourceSocket) => relayMessage(msg, sourceSocket, swarmManager.getSwarm(), diagnostics),
-    broadcastUpdate
+    broadcastUpdate,
   );
 
   await swarmManager.start();
 
   diagnostics.startLogging(
     () => peerManager.size,
-    () => swarmManager.getSwarm().connections.size
+    () => swarmManager.getSwarm().connections.size,
   );
 
   setInterval(() => {
@@ -65,6 +65,6 @@ const main = async () => {
 
   process.on("SIGINT", handleShutdown);
   process.on("SIGTERM", handleShutdown);
-}
+};
 
 main().catch(console.error);

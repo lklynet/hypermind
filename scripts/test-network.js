@@ -50,7 +50,7 @@ async function waitForPeers() {
   const finalStats = await fetchStats();
   throw new Error(
     `Failed to discover peers within ${PEER_DISCOVERY_TIMEOUT / 1000} seconds\n` +
-    `Final stats: ${JSON.stringify(finalStats, null, 2)}`
+      `Final stats: ${JSON.stringify(finalStats, null, 2)}`,
   );
 }
 
