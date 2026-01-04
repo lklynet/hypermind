@@ -586,6 +586,8 @@ All counters reset every `DIAGNOSTICS_INTERVAL` (10s).
 
 ### ChatRateLimiter (`src/state/ratelimit.js`)
 
+Used in `routes.js` for API-level rate limiting:
+
 ```javascript
 {
   senders: Map()  // id → { timestamps: [], lastMessage: ts }
@@ -595,6 +597,8 @@ All counters reset every `DIAGNOSTICS_INTERVAL` (10s).
 - **Cooldown check**: Rejects if `now - lastMessage < CHAT_MIN_COOLDOWN`.
 - **Burst check**: Rejects if 5+ messages in last 30s window.
 - **Cleanup**: Stale sender data removed when `lastMessage > 2 * CHAT_BURST_WINDOW`.
+
+Note: The ChatRateLimiter is instantiated directly in `routes.js` for local API rate limiting.
 
 ---
 
@@ -628,14 +632,30 @@ All counters reset every `DIAGNOSTICS_INTERVAL` (10s).
 - Pushed on peer changes and every `DIAGNOSTICS_INTERVAL`.
 - Throttled: minimum 1s between broadcasts.
 
-### SSE Chat Event (`/events`)
+### SSE Chat/System Messages (`/events`)
 
-```
-event: chat
-data: {"id":"302a...","msg":"hello","ts":1704326400000}
+Chat and system messages are broadcast via the same SSE stream as regular updates:
+
+```json
+{
+  "type": "CHAT",
+  "sender": "302a...",
+  "nick": "alice",
+  "content": "hello",
+  "timestamp": 1704326400000
+}
 ```
 
-- Pushed immediately on chat message receipt (no throttle).
+```json
+{
+  "type": "SYSTEM",
+  "content": "Connection established with Node ...abc12345",
+  "timestamp": 1704326400000
+}
+```
+
+- Chat messages broadcast via `sseManager.broadcast()`.
+- System messages sent on peer connect/disconnect (when ENABLE_CHAT is true).
 
 ### Static Assets
 
@@ -655,7 +675,8 @@ Served from `public/` directory:
 - **Diagnostics Modal**: Toggle via "diagnostics" link, shows live metrics.
 - **Map Modal**: Toggle via "map" link, shows peer locations using Leaflet.
 - **Chat Terminal**: Minimizable terminal-style panel for chat.
-- **Chat SSE Listener**: `evtSource.addEventListener('chat', ...)` — separate from default message handler.
+- **Nickname Storage**: `localStorage.getItem('hypermind_nick')` — persists across sessions.
+- **Chat Messages**: Received via SSE `onmessage` handler (type: CHAT or SYSTEM).
 - **No console.error on SSE errors**: Intentional — auto-reconnect makes logging spammy.
 
 ### Bandwidth Formatter
