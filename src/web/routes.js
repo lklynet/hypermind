@@ -87,6 +87,9 @@ const setupRoutes = (
 
     sseManager.addClient(res);
 
+    // UPDATED: Calculate swarm stats for the initial connection
+    const swarmStats = peerManager.getSwarmStats(identity);
+
     const data = JSON.stringify({
       count: peerManager.size,
       totalUnique: peerManager.totalUniquePeers,
@@ -96,6 +99,9 @@ const setupRoutes = (
       diagnostics: diagnostics.getStats(),
       chatEnabled: ENABLE_CHAT,
       peers: peerManager.getPeersWithIps(),
+      // UPDATED: Send the stats to the dashboard
+      totalRam: swarmStats.totalRam,
+      totalCores: swarmStats.totalCores,
     });
     res.write(`data: ${data}\n\n`);
 
@@ -105,6 +111,9 @@ const setupRoutes = (
   });
 
   app.get("/api/stats", (req, res) => {
+    // UPDATED: Calculate swarm stats for API requests
+    const swarmStats = peerManager.getSwarmStats(identity);
+
     res.json({
       count: peerManager.size,
       totalUnique: peerManager.totalUniquePeers,
@@ -114,6 +123,9 @@ const setupRoutes = (
       diagnostics: diagnostics.getStats(),
       chatEnabled: ENABLE_CHAT,
       peers: peerManager.getPeersWithIps(),
+      // UPDATED: Include the stats in the JSON response
+      totalRam: swarmStats.totalRam,
+      totalCores: swarmStats.totalCores,
     });
   });
 
