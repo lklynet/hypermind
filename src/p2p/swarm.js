@@ -37,6 +37,8 @@ class SwarmManager {
         socket.connectedAt = Date.now();
 
         const sig = signMessage(`seq:${this.peerManager.getSeq()}`, this.identity.privateKey);
+        
+        // 1. UPDATED: Add hardware stats to the initial Hello
         const hello = JSON.stringify({
             type: "HEARTBEAT",
             id: this.identity.id,
@@ -44,6 +46,7 @@ class SwarmManager {
             hops: 0,
             nonce: this.identity.nonce,
             sig,
+            hardware: this.identity.hardware, // <--- NEW LINE
         });
         socket.write(hello);
         this.broadcastFn();
@@ -55,8 +58,6 @@ class SwarmManager {
             socket.buffer += data.toString();
 
             const lines = socket.buffer.split("\n");
-            // The last element is either an empty string (if data ended with \n)
-            // or the incomplete part of the next message.
             socket.buffer = lines.pop();
 
             for (const msgStr of lines) {
@@ -65,7 +66,6 @@ class SwarmManager {
                     const msg = JSON.parse(msgStr);
                     this.messageHandler.handleMessage(msg, socket);
                 } catch (e) {
-                    // Invalid JSON or partial message (shouldn't happen with buffering logic unless data is corrupted)
                 }
             }
         });
@@ -83,9 +83,13 @@ class SwarmManager {
     startHeartbeat() {
         this.heartbeatInterval = setInterval(() => {
             const seq = this.peerManager.incrementSeq();
-            this.peerManager.addOrUpdatePeer(this.identity.id, seq, null);
+            
+            // Pass local hardware stats to manager so it knows about "us" too
+            this.peerManager.addOrUpdatePeer(this.identity.id, seq, null, this.identity.hardware);
 
             const sig = signMessage(`seq:${seq}`, this.identity.privateKey);
+            
+            // 2. UPDATED: Add hardware stats to the recurring Heartbeat
             const heartbeat = JSON.stringify({
                 type: "HEARTBEAT",
                 id: this.identity.id,
@@ -93,6 +97,7 @@ class SwarmManager {
                 hops: 0,
                 nonce: this.identity.nonce,
                 sig,
+                hardware: this.identity.hardware, // <--- NEW LINE
             }) + "\n";
 
             for (const socket of this.swarm.connections) {
