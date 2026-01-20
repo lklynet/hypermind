@@ -1,5 +1,6 @@
 const Hyperswarm = require("hyperswarm");
 const { signMessage } = require("../core/security");
+const { getHardwareStats } = require("../utils/hardware");
 const {
   TOPIC,
   TOPIC_NAME,
@@ -51,17 +52,20 @@ class SwarmManager {
 
     socket.connectedAt = Date.now();
 
+    const hardware = getHardwareStats();
+    const seq = this.peerManager.getSeq();
     const sig = signMessage(
-      `seq:${this.peerManager.getSeq()}`,
+      `seq:${seq}:hw:${hardware.ram}:${hardware.cores}`,
       this.identity.privateKey
     );
     const hello = JSON.stringify({
       type: "HEARTBEAT",
       id: this.identity.id,
-      seq: this.peerManager.getSeq(),
+      seq,
       hops: 0,
       nonce: this.identity.nonce,
       sig,
+      hardware,
     });
     socket.write(hello);
     this.broadcastFn();
@@ -96,13 +100,17 @@ class SwarmManager {
   }
 
   startHeartbeat() {
+    const hardware = getHardwareStats();
     this.heartbeatInterval = setInterval(() => {
       const seq = this.peerManager.incrementSeq();
-      this.peerManager.addOrUpdatePeer(this.identity.id, seq, null);
+      this.peerManager.addOrUpdatePeer(this.identity.id, seq, null, hardware);
 
       this.messageHandler.bloomFilter.markRelayed(this.identity.id, seq);
 
-      const sig = signMessage(`seq:${seq}`, this.identity.privateKey);
+      const sig = signMessage(
+        `seq:${seq}:hw:${hardware.ram}:${hardware.cores}`,
+        this.identity.privateKey
+      );
       const heartbeat =
         JSON.stringify({
           type: "HEARTBEAT",
@@ -111,6 +119,7 @@ class SwarmManager {
           hops: 0,
           nonce: this.identity.nonce,
           sig,
+          hardware,
         }) + "\n";
 
       for (const socket of this.swarm.connections) {

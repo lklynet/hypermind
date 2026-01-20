@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 const { generateIdentity } = require("./src/core/identity");
+const { getHardwareStats } = require("./src/utils/hardware");
 const { PeerManager } = require("./src/state/peers");
 const { DiagnosticsManager } = require("./src/state/diagnostics");
 const { MessageHandler } = require("./src/p2p/messaging");
@@ -16,7 +17,7 @@ const main = async () => {
   const diagnostics = new DiagnosticsManager();
   const sseManager = new SSEManager();
 
-  peerManager.addOrUpdatePeer(identity.id, peerManager.getSeq());
+  peerManager.addOrUpdatePeer(identity.id, peerManager.getSeq(), null, getHardwareStats());
 
   const broadcastUpdate = () => {
     sseManager.broadcastUpdate({
@@ -27,7 +28,8 @@ const main = async () => {
       diagnostics: diagnostics.getStats(),
       chatEnabled: ENABLE_CHAT,
       mapEnabled: ENABLE_MAP,
-      peers: peerManager.getPeersWithIps()
+      peers: peerManager.getPeersWithIps(),
+      swarmStats: peerManager.getSwarmStats(),
     });
   };
 

@@ -68,7 +68,13 @@ class MessageHandler {
 
       const key = createPublicKey(id);
 
-      if (!verifySignature(`seq:${seq}`, sig, key)) {
+      // Build signature payload - include hardware if present
+      const hardware = msg.hardware || null;
+      const sigPayload = hardware
+        ? `seq:${seq}:hw:${hardware.ram}:${hardware.cores}`
+        : `seq:${seq}`;
+
+      if (!verifySignature(sigPayload, sig, key)) {
         this.diagnostics.increment("invalidSig");
         return;
       }
@@ -87,7 +93,7 @@ class MessageHandler {
       };
 
       const ip = hops === 0 ? getIp(sourceSocket) : null;
-      const wasNew = this.peerManager.addOrUpdatePeer(id, seq, ip);
+      const wasNew = this.peerManager.addOrUpdatePeer(id, seq, ip, hardware);
 
       if (wasNew) {
         this.diagnostics.increment("newPeersAdded");
@@ -223,16 +229,33 @@ const validateMessage = (msg) => {
   if (msgSize > require("../config/constants").MAX_MESSAGE_SIZE) return false;
 
   if (msg.type === "HEARTBEAT") {
-    const allowedFields = ["type", "id", "seq", "hops", "nonce", "sig"];
+    const allowedFields = ["type", "id", "seq", "hops", "nonce", "sig", "hardware"];
     const fields = Object.keys(msg);
-    return (
+    const baseValid =
       fields.every((f) => allowedFields.includes(f)) &&
       msg.id &&
       typeof msg.seq === "number" &&
       typeof msg.hops === "number" &&
       msg.nonce &&
-      msg.sig
-    );
+      msg.sig;
+
+    if (!baseValid) return false;
+
+    // Optional hardware validation with realistic sanity bounds
+    // Max 2TB RAM (high-end servers), max 256 cores (enterprise systems)
+    if (msg.hardware) {
+      return (
+        typeof msg.hardware === "object" &&
+        typeof msg.hardware.ram === "number" &&
+        typeof msg.hardware.cores === "number" &&
+        msg.hardware.ram >= 0 &&
+        msg.hardware.ram <= 2048 &&
+        msg.hardware.cores >= 1 &&
+        msg.hardware.cores <= 256
+      );
+    }
+
+    return true;
   }
 
   if (msg.type === "LEAVE") {

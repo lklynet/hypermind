@@ -13,6 +13,7 @@ const setupStatsRoutes = (router, dependencies) => {
             diagnostics: diagnostics.getStats(),
             chatEnabled: ENABLE_CHAT,
             peers: peerManager.getPeersWithIps(),
+            swarmStats: peerManager.getSwarmStats(),
         });
     });
 };

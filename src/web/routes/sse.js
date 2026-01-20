@@ -21,6 +21,7 @@ const setupSSERoutes = (router, dependencies) => {
             chatEnabled: ENABLE_CHAT,
             mapEnabled: ENABLE_MAP,
             peers: peerManager.getPeersWithIps(),
+            swarmStats: peerManager.getSwarmStats(),
         });
         res.write(`data: ${data}\n\n`);
 
