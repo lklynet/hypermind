@@ -96,7 +96,6 @@ const animate = () => {
 
 const openDiagnostics = () => {
   document.getElementById("diagnosticsModal").classList.add("active");
-  // Ensure bandwidth graph is correctly sized and drawn after modal opens
   setTimeout(() => {
     if (typeof resizeBandwidthCanvas === "function") {
       resizeBandwidthCanvas();
@@ -121,13 +120,13 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// Map Logic
 let map = null;
 let mapInitialized = false;
-let peerMarkers = {}; // id -> marker
-let ipCache = {}; // ip -> { lat, lon }
+let peerMarkers = {};
+let ipCache = {};
 let lastPeerData = [];
 let myLocation = null;
+let heatLayer = null;
 
 const fetchMyLocation = async () => {
   if (myLocation) return;
@@ -178,13 +177,30 @@ document.getElementById("mapModal").addEventListener("click", (e) => {
 const initMap = () => {
   if (mapInitialized) return;
 
-  map = L.map("map").setView([20, 0], 2);
+  map = L.map("map", {
+    zoomControl: false,
+    attributionControl: false
+  }).setView([20, 0], 2);
 
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  const mapStyle = getComputedStyle(document.documentElement);
+  const bgColor = mapStyle.getPropertyValue('--color-modal-bg').trim();
+  document.getElementById('map').style.backgroundColor = bgColor;
+
+  L.control.attribution({
+    position: 'bottomright',
+    prefix: false
+  }).addAttribution('&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors').addTo(map);
+
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png", {
     subdomains: "abcd",
     maxZoom: 19,
+    opacity: 0.6 
+  }).addTo(map);
+
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png", {
+    subdomains: "abcd",
+    maxZoom: 19,
+    opacity: 0.8
   }).addTo(map);
 
   mapInitialized = true;
@@ -197,7 +213,6 @@ const initMap = () => {
 const fetchLocation = async (ip) => {
   if (ipCache[ip]) return ipCache[ip];
 
-  // Skip local IPs
   if (
     ip === "127.0.0.1" ||
     ip === "::1" ||
@@ -232,8 +247,8 @@ const updateMap = async (peers) => {
   if (!peers) peers = [];
 
   const currentIds = new Set(peers.map((p) => p.id));
+  const heatPoints = [];
 
-  // Remove old markers
   for (const id in peerMarkers) {
     if (id !== "me" && !currentIds.has(id)) {
       map.removeLayer(peerMarkers[id]);
@@ -241,46 +256,81 @@ const updateMap = async (peers) => {
     }
   }
 
-  // Add/Update markers
+  const c1 = getThemeColor("--color-particle");
+  const c2 = getThemeColor("--color-text-main-label");
+  const c3 = getThemeColor("--color-modal-title");
+
   for (const peer of peers) {
     if (!peer.ip) continue;
 
-    if (!peerMarkers[peer.id]) {
-      const loc = await fetchLocation(peer.ip);
-      if (loc) {
-        const marker = L.circleMarker([loc.lat, loc.lon], {
-          radius: 10,
-          fillColor: "#4ade80",
-          color: "transparent",
-          weight: 0,
-          opacity: 0,
-          fillOpacity: 0.15,
-        }).addTo(map);
+    const loc = await fetchLocation(peer.ip);
+    if (loc) {
+      heatPoints.push([loc.lat, loc.lon, 0.6]); 
+
+      if (!peerMarkers[peer.id]) {
+        const icon = L.divIcon({
+          className: 'custom-map-marker',
+          html: `<div class="map-peer-icon" style="--peer-color: ${c1}"></div>`,
+          iconSize: [12, 12],
+          iconAnchor: [6, 6]
+        });
+
+        const marker = L.marker([loc.lat, loc.lon], { icon }).addTo(map);
 
         const peerName = window.generateScreenname
           ? window.generateScreenname(peer.id)
           : peer.id.slice(-8);
         marker.bindPopup(`<b>${peerName}</b><br>${loc.city}, ${loc.country}`);
         peerMarkers[peer.id] = marker;
+      } else {
+
+        const el = peerMarkers[peer.id].getElement();
+        if (el) {
+          const inner = el.querySelector('.map-peer-icon');
+          if (inner) inner.style.setProperty('--peer-color', c1);
+        }
       }
     }
   }
 
-  // Add My Location
-  if (myLocation && !peerMarkers["me"]) {
-    const marker = L.circleMarker([myLocation.lat, myLocation.lon], {
-      radius: 6,
-      fillColor: "#ffffff",
-      color: "#4ade80",
-      weight: 2,
-      opacity: 1,
-      fillOpacity: 1,
-    }).addTo(map);
+  if (typeof L.heatLayer === 'function') {
+    if (heatLayer) {
+      map.removeLayer(heatLayer);
+    }
+    
+    const gradient = {
+      0.4: c1,
+      0.7: c2,
+      1.0: c3
+    };
 
-    marker.bindPopup(
-      `<b>This Node</b><br>${myLocation.city}, ${myLocation.country}`
-    );
-    peerMarkers["me"] = marker;
+    heatLayer = L.heatLayer(heatPoints, {
+      radius: 35,
+      blur: 20,
+      maxZoom: 10,
+      gradient: gradient
+    }).addTo(map);
+  }
+
+  if (myLocation) {
+    if (!peerMarkers["me"]) {
+      const meIcon = L.divIcon({
+        className: 'custom-map-marker-me',
+        html: `<div class="map-me-icon"></div>`,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
+      });
+
+      const marker = L.marker([myLocation.lat, myLocation.lon], {
+        icon: meIcon,
+        zIndexOffset: 1000
+      }).addTo(map);
+
+      marker.bindPopup(
+        `<b>This Node</b><br>${myLocation.city}, ${myLocation.country}`
+      );
+      peerMarkers["me"] = marker;
+    }
   }
 };
 
@@ -1096,6 +1146,17 @@ function cycleTheme() {
     btn.disabled = false;
     btn.style.opacity = "";
     showThemeNotification(newTheme);
+    
+    if (mapInitialized) {
+      const mapStyle = getComputedStyle(document.documentElement);
+      const bgColor = mapStyle.getPropertyValue('--color-modal-bg').trim();
+      const mapDiv = document.getElementById('map');
+      if (mapDiv) mapDiv.style.backgroundColor = bgColor;
+      
+      if (lastPeerData.length > 0) {
+        updateMap(lastPeerData);
+      }
+    }
   };
 
   newLink.onerror = () => {

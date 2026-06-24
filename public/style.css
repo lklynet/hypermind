@@ -551,3 +551,35 @@ a { color: var(--color-text-anchor-link); text-decoration: none; border-bottom: 
         font-size: 16px;
     }
 }
+
+.map-peer-icon {
+    background: radial-gradient(circle, var(--peer-color) 0%, transparent 80%);
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    opacity: 0.8;
+    mix-blend-mode: screen;
+    box-shadow: 0 0 5px var(--peer-color);
+}
+
+.map-me-icon {
+    background: var(--color-bg-main);
+    border: 2px solid var(--color-particle);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--color-particle);
+    width: 100%;
+    height: 100%;
+    animation: pulse-map 2s infinite;
+}
+
+@keyframes pulse-map {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+    }
+}
