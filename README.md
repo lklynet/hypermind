@@ -259,10 +259,10 @@ A: The homelab must grow. ¯\\_(ツ)_/¯
 
 ## Star History
 
-<a href="https://star-history.com/#lklynet/hypermind&Date">
+<a href="https://star-history.dera.page/#lklynet/hypermind&Date">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=lklynet/hypermind&type=timeline&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=lklynet/hypermind&type=timeline" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=lklynet/hypermind&type=timeline" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=lklynet/hypermind&type=timeline&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=lklynet/hypermind&type=timeline" />
+   <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=lklynet/hypermind&type=timeline" />
  </picture>
 </a>
