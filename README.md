@@ -1,4 +1,6 @@
 <div align="center">
+
+[![Deploy to Railyard](https://app.railyard.run/deploy/badge)](https://app.railyard.run/deploy?repo=https://github.com/lklynet/hypermind)
 <img src="public/hypernode.svg" width="150" alt="Hypermind Logo" />
 <h1>Hypermind</h1>
 </div>
